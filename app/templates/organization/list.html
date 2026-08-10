@@ -1,0 +1,734 @@
+{% extends "base.html" %}
+
+{% block title %}Organizations | MerchOps AI{% endblock %}
+
+{% block page_title %}Organizations{% endblock %}
+
+{% block page_subtitle %}Super Admin can create, review, and manage all organizations from one place.{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── header banner ── */
+    .orgs-header {
+        position: relative;
+        background: linear-gradient(135deg, rgba(127,119,221,.10) 0%, rgba(29,158,117,.05) 100%);
+        border-radius: var(--r-lg);
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(127,119,221,.28);
+        overflow: hidden;
+    }
+    .orgs-header::before {
+        content: '';
+        position: absolute; inset: 0;
+        background-image:
+            repeating-linear-gradient(0deg,   transparent, transparent 28px, rgba(127,119,221,.04) 28px, rgba(127,119,221,.04) 29px),
+            repeating-linear-gradient(90deg,  transparent, transparent 28px, rgba(127,119,221,.04) 28px, rgba(127,119,221,.04) 29px);
+        pointer-events: none;
+    }
+    .orgs-header::after {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(127,119,221,.6), rgba(29,158,117,.4), transparent);
+    }
+    .orgs-header-top {
+        position: relative;
+        display: flex; justify-content: space-between; align-items: flex-start;
+        flex-wrap: wrap; gap: 14px;
+    }
+    .orgs-title-row { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+    .orgs-title-icon { font-size: 22px; color: var(--accent); }
+    .orgs-title-row h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--text) 30%, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+    .orgs-desc { color: var(--muted); margin: 0; font-size: 12px; }
+
+    /* ── stat boxes ── */
+    .org-stats { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; position: relative; }
+   .stat-box {
+    flex: 1;
+    min-width: 110px;
+    text-align: center;
+    background: var(--card-bg, rgba(255,255,255,.75));
+    border-radius: var(--r);
+    padding: 14px 16px;
+    border: 1px solid rgba(127,119,221,.18);
+    border-bottom: 2px solid rgba(127,119,221,.45);
+    transition: border-color .2s, transform .2s, box-shadow .2s;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(8px);
+}
+    .stat-box::before {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(180deg, rgba(127,119,221,.04) 0%, transparent 60%);
+        pointer-events: none;
+    }
+    .stat-box:hover {
+        border-color: rgba(127,119,221,.4);
+        border-bottom-color: var(--accent);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(127,119,221,.18);
+    }
+    .stat-box:nth-child(2) { border-bottom-color: rgba(29,158,117,.55); }
+    .stat-box:nth-child(2):hover { border-bottom-color: #1D9E75; box-shadow: 0 8px 24px rgba(29,158,117,.18); }
+   .stat-box .stat-number {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    background: linear-gradient(135deg, var(--text), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+    .stat-box:nth-child(2) .stat-number {
+    background: linear-gradient(135deg, var(--text), #1D9E75);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+    .stat-box .stat-label {
+        font-size: 10.5px; color: var(--muted); margin-top: 6px;
+        text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600;
+        font-family: var(--font-mono);
+    }
+
+    /* ── search / filter ── */
+    .search-filter { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+    .search-input {
+        flex: 1; min-width: 200px;
+        padding: 9px 14px;
+        border-radius: var(--r-sm);
+        border: 1px solid rgba(127,119,221,.2);
+        background: rgba(127,119,221,.04);
+        color: var(--text); font-size: 13px; font-family: var(--font);
+        outline: none; transition: border-color .2s, box-shadow .2s;
+    }
+    .search-input:focus {
+        border-color: rgba(127,119,221,.55);
+        box-shadow: 0 0 0 3px rgba(127,119,221,.10);
+    }
+    .search-input::placeholder { color: var(--muted); }
+    .filter-badge {
+        background: rgba(127,119,221,.07); border: 1px solid rgba(127,119,221,.16);
+        border-radius: 999px; padding: 7px 16px;
+        font-size: 12px; font-weight: 600; color: var(--text-2);
+        cursor: pointer; transition: all .15s; font-family: var(--font);
+    }
+    .filter-badge:hover  { background: rgba(127,119,221,.14); border-color: rgba(127,119,221,.34); color: var(--accent); }
+    .filter-badge.active { background: rgba(127,119,221,.16); border-color: rgba(127,119,221,.5);  color: var(--accent); box-shadow: 0 0 8px rgba(127,119,221,.18); }
+
+    /* ── table card ── */
+    .org-card-table { padding: 0; overflow: hidden; }
+    .org-table th {
+        padding: 11px 18px;
+        font-family: var(--font-mono); font-size: 11px;
+        letter-spacing: .08em; text-transform: uppercase;
+        color: var(--accent); background: rgba(127,119,221,.05);
+        border-bottom: 1px solid rgba(127,119,221,.15);
+    }
+    .org-table td { padding: 14px 18px; vertical-align: middle; border-bottom: 1px solid rgba(127,119,221,.06); }
+
+    /* ── org row ── */
+    .org-row { animation: fadeInUp .32s ease forwards; opacity: 0; transition: background .15s; }
+    .org-row:nth-child(1){animation-delay:.04s} .org-row:nth-child(2){animation-delay:.08s}
+    .org-row:nth-child(3){animation-delay:.12s} .org-row:nth-child(4){animation-delay:.16s}
+    .org-row:nth-child(5){animation-delay:.20s}
+    .org-row:hover { background: rgba(127,119,221,.04); }
+    .org-row:hover td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
+
+    /* ── org name ── */
+    .org-name { display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 14px; color: var(--text); }
+    .org-name i { color: var(--accent); font-size: 15px; }
+
+    /* ── code badge ── */
+    .org-code-badge {
+        font-family: var(--font-mono);
+        background: rgba(127,119,221,.10); border: 1px solid rgba(127,119,221,.25);
+        padding: 3px 10px; border-radius: 999px;
+        font-size: 11px; font-weight: 600; color: var(--accent);
+        display: inline-flex; align-items: center; gap: 5px;
+    }
+
+    /* ── indicators ── */
+    .db-indicator, .email-indicator { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+    .db-indicator.connected, .email-indicator.configured { color: var(--green); }
+    .db-indicator.disconnected { color: var(--amber); }
+    .email-indicator.not-configured { color: var(--muted); }
+
+    /* ── action buttons ── */
+    .action-buttons { display: flex; gap: 7px; flex-wrap: wrap; }
+    .btn-open {
+        background: rgba(127,119,221,.08); border: 1px solid rgba(127,119,221,.28); color: var(--accent);
+        transition: all .2s;
+    }
+    .btn-open:hover {
+        background: rgba(127,119,221,.18); border-color: rgba(127,119,221,.55);
+        box-shadow: 0 0 12px rgba(127,119,221,.22); color: #fff;
+    }
+    .btn-manage {
+        background: rgba(29,158,117,.07); border: 1px solid rgba(29,158,117,.28); color: var(--green);
+        transition: all .2s;
+    }
+    .btn-manage:hover {
+        background: rgba(29,158,117,.15); border-color: rgba(29,158,117,.52);
+        box-shadow: 0 0 12px rgba(29,158,117,.18);
+    }
+
+    /* ── no results ── */
+    .no-results-cell { text-align: center; padding: 40px; color: var(--muted); }
+
+    /* ── footer tip ── */
+    .orgs-tip-bar {
+        margin-top: 20px; padding: 14px 20px;
+        background: rgba(127,119,221,.04);
+        border-radius: var(--r); border: 1px solid rgba(127,119,221,.12);
+        display: flex; align-items: center; flex-wrap: wrap; gap: 12px;
+        justify-content: space-between;
+    }
+    .orgs-tip-left { display: flex; align-items: center; gap: 10px; }
+    .orgs-tip-icon { color: var(--amber); font-size: 15px; flex-shrink: 0; }
+    .orgs-tip-text { font-size: 12px; color: var(--muted); }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Professional organization registry polish */
+    .orgs-header {
+        background: linear-gradient(180deg, rgba(17,24,39,.92), rgba(15,23,42,.74));
+        border: 1px solid rgba(148,163,184,.18);
+        border-radius: 12px;
+        box-shadow: 0 18px 42px rgba(0,0,0,.18);
+    }
+    .orgs-header::before {
+        background: linear-gradient(90deg, rgba(59,130,246,.08), transparent 44%, rgba(16,185,129,.06));
+    }
+    .orgs-title-row h2,
+    .stat-box .stat-number,
+    .stat-box:nth-child(2) .stat-number {
+        background: none;
+        -webkit-background-clip: initial;
+        background-clip: initial;
+        color: var(--text);
+        letter-spacing: 0;
+    }
+    .orgs-title-icon {
+        width: 38px;
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: rgba(59,130,246,.12);
+        border: 1px solid rgba(59,130,246,.22);
+        color: #93c5fd;
+    }
+    .orgs-desc {
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .org-stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .stat-box {
+        text-align: left;
+        background: rgba(15,23,42,.62);
+        border: 1px solid rgba(148,163,184,.14);
+        border-left: 3px solid rgba(59,130,246,.72);
+        border-bottom: 1px solid rgba(148,163,184,.14);
+        border-radius: 10px;
+        box-shadow: none;
+    }
+    .stat-box:nth-child(2) { border-left-color: rgba(16,185,129,.72); border-bottom-color: rgba(148,163,184,.14); }
+    .stat-box:nth-child(3) { border-left-color: rgba(14,165,233,.72); }
+    .stat-box:nth-child(4) { border-left-color: rgba(245,158,11,.72); }
+    .stat-box:hover {
+        transform: translateY(-1px);
+        border-color: rgba(148,163,184,.24);
+        box-shadow: 0 12px 28px rgba(0,0,0,.16);
+    }
+    .stat-box::before {
+        display: none;
+    }
+    .stat-box .stat-number {
+        font-size: 27px;
+        font-weight: 750;
+    }
+    .stat-box .stat-label {
+        font-size: 10px;
+        color: var(--muted);
+    }
+    .search-filter {
+        align-items: center;
+        background: rgba(15,23,42,.46);
+        border: 1px solid rgba(148,163,184,.14);
+        border-radius: 12px;
+        padding: 12px;
+    }
+    .search-input {
+        min-height: 40px;
+        background: rgba(2,6,23,.32);
+        border-color: rgba(148,163,184,.2);
+        border-radius: 9px;
+    }
+    .filter-badge {
+        border-radius: 8px;
+        background: rgba(15,23,42,.68);
+        border-color: rgba(148,163,184,.16);
+        color: var(--muted);
+    }
+    .filter-badge:hover,
+    .filter-badge.active {
+        color: #bfdbfe;
+        background: rgba(59,130,246,.12);
+        border-color: rgba(59,130,246,.34);
+        box-shadow: none;
+    }
+    .org-card-table {
+        border-radius: 12px;
+        border: 1px solid rgba(148,163,184,.16);
+        background: rgba(15,23,42,.58);
+    }
+    .org-table th {
+        color: var(--muted);
+        background: rgba(2,6,23,.26);
+        border-bottom-color: rgba(148,163,184,.14);
+    }
+    .org-table td {
+        border-bottom-color: rgba(148,163,184,.09);
+    }
+    .org-name i {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: rgba(59,130,246,.1);
+        color: #93c5fd;
+    }
+    .org-code-badge {
+        border-radius: 7px;
+        background: rgba(148,163,184,.08);
+        border-color: rgba(148,163,184,.16);
+        color: var(--text-2);
+    }
+    .db-indicator.connected,
+    .email-indicator.configured {
+        color: #34d399;
+    }
+    .db-indicator.disconnected {
+        color: #fbbf24;
+    }
+    .btn-open,
+    .btn-manage {
+        border-radius: 8px;
+        box-shadow: none;
+    }
+    .btn-open {
+        color: #bfdbfe;
+        background: rgba(59,130,246,.1);
+        border-color: rgba(59,130,246,.24);
+    }
+    .btn-open:hover {
+        color: #fff;
+        background: rgba(59,130,246,.2);
+        border-color: rgba(59,130,246,.38);
+        box-shadow: none;
+    }
+    .btn-manage {
+        color: #a7f3d0;
+        background: rgba(16,185,129,.1);
+        border-color: rgba(16,185,129,.24);
+    }
+    .btn-manage:hover {
+        color: #fff;
+        background: rgba(16,185,129,.18);
+        border-color: rgba(16,185,129,.38);
+        box-shadow: none;
+    }
+    .orgs-tip-bar {
+        border-radius: 12px;
+        background: rgba(15,23,42,.42);
+        border-color: rgba(148,163,184,.14);
+    }
+    @media (max-width: 900px) {
+        .org-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+        .orgs-header { padding: 20px; }
+        .org-stats { grid-template-columns: 1fr; }
+    }
+
+    /* Light theme: clean tenant registry */
+    html[data-theme="light"] .orgs-header {
+        background: #ffffff;
+        border-color: #dbe3f0;
+        box-shadow: 0 14px 34px rgba(15,23,42,.08);
+    }
+    html[data-theme="light"] .orgs-header::before {
+        background: linear-gradient(135deg, rgba(37,99,235,.06), transparent 52%, rgba(16,185,129,.05));
+    }
+    html[data-theme="light"] .orgs-header::after {
+        background: linear-gradient(90deg, transparent, rgba(37,99,235,.24), transparent);
+    }
+    html[data-theme="light"] .orgs-title-row h2,
+    html[data-theme="light"] .stat-box .stat-number {
+        color: #0f172a;
+    }
+    html[data-theme="light"] .orgs-desc,
+    html[data-theme="light"] .stat-box .stat-label,
+    html[data-theme="light"] .orgs-tip-text {
+        color: #64748b;
+    }
+    html[data-theme="light"] .orgs-title-icon,
+    html[data-theme="light"] .org-name i {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #2563eb;
+    }
+    html[data-theme="light"] .stat-box {
+        background: #f8fafc;
+        border-color: #e2e8f0;
+        border-left-color: #2563eb;
+        box-shadow: none;
+    }
+    html[data-theme="light"] .stat-box:nth-child(2) { border-left-color: #059669; }
+    html[data-theme="light"] .stat-box:nth-child(3) { border-left-color: #0284c7; }
+    html[data-theme="light"] .stat-box:nth-child(4) { border-left-color: #d97706; }
+    html[data-theme="light"] .stat-box:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 10px 24px rgba(15,23,42,.08);
+    }
+    html[data-theme="light"] .search-filter,
+    html[data-theme="light"] .org-card-table,
+    html[data-theme="light"] .orgs-tip-bar {
+        background: #ffffff;
+        border-color: #dbe3f0;
+        box-shadow: 0 10px 26px rgba(15,23,42,.05);
+    }
+    html[data-theme="light"] .search-input {
+        background: #f8fafc;
+        border-color: #dbe3f0;
+        color: #0f172a;
+    }
+    html[data-theme="light"] .search-input:focus {
+        border-color: #93c5fd;
+        box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+    html[data-theme="light"] .filter-badge {
+        background: #f8fafc;
+        border-color: #e2e8f0;
+        color: #475569;
+    }
+    html[data-theme="light"] .filter-badge:hover,
+    html[data-theme="light"] .filter-badge.active {
+        color: #1d4ed8;
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+    html[data-theme="light"] .org-table th {
+        background: #f8fafc;
+        color: #64748b;
+        border-bottom-color: #dbe3f0;
+    }
+    html[data-theme="light"] .org-table td {
+        color: #0f172a;
+        border-bottom-color: #e5e7eb;
+        background: #ffffff;
+    }
+    html[data-theme="light"] .org-row:hover td {
+        background: #f8fafc;
+    }
+    html[data-theme="light"] .org-row:hover td:first-child {
+        box-shadow: inset 3px 0 0 #2563eb;
+    }
+    html[data-theme="light"] .org-code-badge {
+        background: #f1f5f9;
+        border-color: #dbe3f0;
+        color: #334155;
+    }
+    html[data-theme="light"] .db-indicator.connected,
+    html[data-theme="light"] .email-indicator.configured {
+        color: #059669;
+    }
+    html[data-theme="light"] .btn-open {
+        color: #1d4ed8;
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+    html[data-theme="light"] .btn-open:hover {
+        color: #ffffff;
+        background: #2563eb;
+        border-color: #2563eb;
+    }
+    html[data-theme="light"] .btn-manage {
+        color: #047857;
+        background: #ecfdf5;
+        border-color: #a7f3d0;
+    }
+    html[data-theme="light"] .btn-manage:hover {
+        color: #ffffff;
+        background: #059669;
+        border-color: #059669;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Organizations Header with Stats -->
+<div class="orgs-header">
+    <div class="orgs-header-top">
+        <div>
+            <div class="orgs-title-row">
+                <i class="fas fa-building orgs-title-icon"></i>
+                <h2>Organizations</h2>
+            </div>
+            <p class="orgs-desc">
+                <i class="fas fa-shield-alt"></i> Manage tenant profiles, database connections, email routing, and admin ownership.
+            </p>
+        </div>
+
+        <a class="btn btn-primary" href="{{ url_for('organization.new_organization') }}">
+            <i class="fas fa-plus-circle"></i> Add Organization
+        </a>
+    </div>
+    
+    <!-- Statistics Row -->
+    <div class="org-stats">
+        <div class="stat-box">
+            <div class="stat-number">{{ orgs|length if orgs else 0 }}</div>
+            <div class="stat-label"><i class="fas fa-building"></i> Total Organizations</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">{{ orgs|selectattr('db_name')|list|length if orgs else 0 }}</div>
+            <div class="stat-label"><i class="fas fa-database"></i> DB Configured</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">{{ orgs|selectattr('email')|list|length if orgs else 0 }}</div>
+            <div class="stat-label"><i class="fas fa-envelope"></i> Email Configured</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">{{ orgs|selectattr('smtp_server')|list|length if orgs else 0 }}</div>
+            <div class="stat-label"><i class="fas fa-mail-bulk"></i> SMTP Active</div>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter Bar (optional enhancement) -->
+{% if orgs and orgs|length > 5 %}
+<div class="search-filter">
+    <input type="text" id="searchOrgs" class="search-input" placeholder="Search by organization name or code...">
+    <div class="filter-badge" data-filter="all" id="filterAll">All</div>
+    <div class="filter-badge" data-filter="configured" id="filterConfigured">Configured</div>
+    <div class="filter-badge" data-filter="pending" id="filterPending">Pending Setup</div>
+</div>
+{% endif %}
+
+<!-- Organizations List Card -->
+<div class="card org-card-table">
+    {% if orgs %}
+        <div class="table-wrap">
+            <table class="org-table">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-building"></i> Organization</th>
+                        <th><i class="fas fa-tag"></i> Code</th>
+                        <th><i class="fas fa-database"></i> Database</th>
+                        <th><i class="fas fa-envelope"></i> Email</th>
+                        <th><i class="fas fa-cogs"></i> Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="orgsTableBody">
+                    {% for org in orgs %}
+                    <tr class="org-row" data-org-name="{{ org.name|lower }}" data-org-code="{{ org.code|lower }}" data-has-db="{{ 'true' if org.db_name else 'false' }}">
+                        <td>
+                            <div class="org-name">
+                                <i class="fas fa-building"></i>
+                                <span>{{ org.name }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="org-code-badge">
+                                <i class="fas fa-hashtag"></i> {{ org.code }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if org.db_name %}
+                                <div class="db-indicator connected">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>{{ org.db_name[:30] }}{% if org.db_name|length > 30 %}...{% endif %}</span>
+                                </div>
+                            {% else %}
+                                <div class="db-indicator disconnected">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span>Not configured</span>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if org.email %}
+                                <div class="email-indicator configured">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>{{ org.email }}</span>
+                                </div>
+                            {% else %}
+                                <div class="email-indicator not-configured">
+                                    <i class="fas fa-minus-circle"></i>
+                                    <span>Not set</span>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a class="btn btn-sm btn-open" href="{{ url_for('organization.organization_detail', org_id=org.id) }}">
+                                    <i class="fas fa-folder-open"></i> Open
+                                </a>
+                                <a class="btn btn-sm btn-manage" href="{{ url_for('organization.organization_users', org_id=org.id) }}">
+                                    <i class="fas fa-users"></i> Users
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-building"></i>
+            <h3>No organizations found</h3>
+            <p>Create your first organization to start managing users, emails, and tenant settings.</p>
+            <a class="btn btn-primary" href="{{ url_for('organization.new_organization') }}">
+                <i class="fas fa-plus-circle"></i> Create First Organization
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Quick Tips Footer -->
+<div class="orgs-tip-bar">
+    <div class="orgs-tip-left">
+        <i class="fas fa-lightbulb orgs-tip-icon"></i>
+        <span class="orgs-tip-text">
+            <strong>Pro Tip:</strong> Configure database and email settings for each organization to enable AI-powered inventory management and automated email agents.
+        </span>
+    </div>
+    <div class="pill pill-purple">
+        <i class="fas fa-robot"></i> AI Tenant Management Active
+    </div>
+</div>
+
+<script>
+// Search and filter functionality (only if elements exist)
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchOrgs');
+    const filterAll = document.getElementById('filterAll');
+    const filterConfigured = document.getElementById('filterConfigured');
+    const filterPending = document.getElementById('filterPending');
+    const tableBody = document.getElementById('orgsTableBody');
+    
+    let currentFilter = 'all';
+    let currentSearch = '';
+    
+    function filterOrgs() {
+        if (!tableBody) return;
+        
+        const rows = tableBody.querySelectorAll('.org-row');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const orgName = row.getAttribute('data-org-name') || '';
+            const orgCode = row.getAttribute('data-org-code') || '';
+            const hasDb = row.getAttribute('data-has-db') === 'true';
+            
+            let matchesSearch = true;
+            let matchesFilter = true;
+            
+            // Search filter
+            if (currentSearch) {
+                matchesSearch = orgName.includes(currentSearch) || orgCode.includes(currentSearch);
+            }
+            
+            // Category filter
+            if (currentFilter === 'configured') {
+                matchesFilter = hasDb;
+            } else if (currentFilter === 'pending') {
+                matchesFilter = !hasDb;
+            }
+            
+            if (matchesSearch && matchesFilter) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Update filter badges
+        if (filterAll) {
+            [filterAll, filterConfigured, filterPending].forEach(badge => {
+                if (badge) badge.classList.remove('active');
+            });
+            
+            if (currentFilter === 'all' && filterAll) filterAll.classList.add('active');
+            if (currentFilter === 'configured' && filterConfigured) filterConfigured.classList.add('active');
+            if (currentFilter === 'pending' && filterPending) filterPending.classList.add('active');
+        }
+        
+        // Show/hide empty message if needed
+        const noResultsMsg = document.getElementById('noResultsMsg');
+        if (visibleCount === 0 && rows.length > 0) {
+            if (!noResultsMsg) {
+                const msg = document.createElement('tr');
+                msg.id = 'noResultsMsg';
+                msg.innerHTML = '<td colspan="5" class="no-results-cell"><i class="fas fa-search"></i> No organizations match your search</td>';
+                if (tableBody) tableBody.appendChild(msg);
+            }
+        } else if (noResultsMsg) {
+            noResultsMsg.remove();
+        }
+    }
+    
+    // Search input handler
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            currentSearch = e.target.value.toLowerCase();
+            filterOrgs();
+        });
+    }
+    
+    // Filter button handlers
+    if (filterAll) {
+        filterAll.addEventListener('click', function() {
+            currentFilter = 'all';
+            filterOrgs();
+        });
+    }
+    
+    if (filterConfigured) {
+        filterConfigured.addEventListener('click', function() {
+            currentFilter = 'configured';
+            filterOrgs();
+        });
+    }
+    
+    if (filterPending) {
+        filterPending.addEventListener('click', function() {
+            currentFilter = 'pending';
+            filterOrgs();
+        });
+    }
+});
+</script>
+{% endblock %}

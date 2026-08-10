@@ -1,0 +1,725 @@
+{% extends "base.html" %}
+
+{% block title %}Presentation Inventory | MerchOps AI{% endblock %}
+
+{% block page_title %}Presentation Inventory{% endblock %}
+
+{% block page_subtitle %}Saved uploaded inventory batches integrated into the environment.{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ══════════════════════════════════
+   PRESENTATION INVENTORY — page styles
+   All tokens inherited from base.html
+══════════════════════════════════ */
+
+/* ── page header banner ── */
+.pres-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    background: linear-gradient(135deg, rgba(56,189,248,.07), rgba(129,140,248,.04));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    transition: background .3s;
+}
+
+[data-theme="light"] .pres-header {
+    background: linear-gradient(135deg, rgba(0,136,187,.06), rgba(91,95,216,.03));
+}
+
+.pres-header-left { display: flex; align-items: center; gap: 13px; }
+
+.pres-icon {
+    width: 42px; height: 42px; border-radius: 11px;
+    background: rgba(56,189,248,.10); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.pres-icon i { font-size: 19px; color: var(--accent); }
+
+.pres-header-left h2 {
+    font-size: 19px; font-weight: 800; margin: 0;
+    background: linear-gradient(135deg, var(--text) 40%, var(--accent));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.pres-header-left p { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+
+.sync-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(52,211,153,.10);
+    border: 1px solid rgba(52,211,153,.22);
+    border-radius: 999px; padding: 5px 12px;
+    font-size: 11px; color: var(--green); font-weight: 600;
+}
+[data-theme="light"] .sync-badge { background: rgba(5,150,105,.08); color: #065f46; border-color: rgba(5,150,105,.22); }
+
+/* ── card head helper ── */
+.card-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+}
+.card-head i { font-size: 17px; color: var(--accent); }
+.card-head h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--text); }
+
+/* ── upload success tip ── */
+.upload-tip {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 12px; padding: 10px 13px;
+    background: rgba(52,211,153,.08);
+    border-left: 3px solid var(--green);
+    border-radius: 8px; font-size: 12px; color: var(--green);
+}
+[data-theme="light"] .upload-tip { background: rgba(5,150,105,.07); }
+
+/* ── action buttons ── */
+.btn-open {
+    background: rgba(56,189,248,.09);
+    border-color: var(--line); color: var(--text-2);
+}
+[data-theme="light"] .btn-open { background: rgba(0,136,187,.07); }
+.btn-open:hover { border-color: var(--line-h); color: var(--accent); }
+
+.btn-delete {
+    background: rgba(248,113,113,.08);
+    border-color: rgba(248,113,113,.22); color: #fca5a5;
+}
+[data-theme="light"] .btn-delete { background: rgba(220,38,38,.07); color: #7f1d1d; border-color: rgba(220,38,38,.20); }
+.btn-delete:hover { background: rgba(248,113,113,.15); border-color: rgba(248,113,113,.35); }
+
+.btn-export {
+    background: rgba(52,211,153,.08);
+    border-color: rgba(52,211,153,.22); color: var(--green);
+}
+[data-theme="light"] .btn-export { background: rgba(5,150,105,.07); color: #065f46; border-color: rgba(5,150,105,.22); }
+.btn-export:hover { background: rgba(52,211,153,.14); border-color: rgba(52,211,153,.35); }
+
+/* ── filter card ── */
+.filter-card {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 18px; margin-bottom: 18px;
+    transition: border-color .2s;
+}
+.filter-head {
+    display: flex; align-items: center; gap: 9px;
+    margin-bottom: 15px; padding-bottom: 11px;
+    border-bottom: 1px solid var(--line);
+}
+.filter-head i { font-size: 15px; color: var(--accent); }
+.filter-head h4 { margin: 0; font-size: 14px; font-weight: 700; color: var(--text); }
+
+/* inline form controls (filter row) */
+.form-control-inline {
+    width: 100%; padding: 9px 12px; border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--input-bg);
+    color: var(--text); outline: none;
+    font-size: 12px; font-family: 'Plus Jakarta Sans', sans-serif;
+    transition: .15s; cursor: pointer;
+}
+[data-theme="light"] .form-control-inline { color: #0d1f2d; border-color: rgba(0,120,160,.20); }
+.form-control-inline:focus { border-color: rgba(56,189,248,.40); box-shadow: 0 0 0 3px rgba(56,189,248,.10); }
+[data-theme="light"] .form-control-inline:focus { box-shadow: 0 0 0 3px rgba(0,136,187,.10); }
+select.form-control-inline option { background: var(--panel); }
+
+/* ── stats grid ── */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+    gap: 13px;
+    margin: 18px 0;
+}
+
+.stat-card-e {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 15px 17px;
+    position: relative; overflow: hidden;
+    transition: all .2s;
+    animation: fadeInUp .3s ease forwards;
+}
+
+.stat-card-e::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+.stat-card-e:hover { border-color: var(--line-h); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(56,189,248,.08); }
+[data-theme="light"] .stat-card-e:hover { box-shadow: 0 8px 20px rgba(0,136,187,.10); }
+
+.stat-icon-e { font-size: 21px; color: var(--accent); margin-bottom: 9px; }
+.stat-label-e { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 5px; }
+[data-theme="light"] .stat-label-e { color: #4a7080; }
+.stat-val-e { font-size: 26px; font-weight: 800; line-height: 1; }
+.stat-note-e { font-size: 10.5px; color: var(--muted); margin-top: 5px; }
+
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── mapped columns ── */
+.mapping-card {
+    background: var(--card-bg); border: 1px solid var(--line);
+    border-radius: 13px; padding: 18px; margin-bottom: 18px;
+}
+
+/* ── inventory tree ── */
+.inventory-tree { display: flex; flex-direction: column; gap: 11px; }
+
+.tree-brand {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-radius: 13px; overflow: hidden;
+    transition: border-color .2s;
+}
+.tree-brand:hover { border-color: var(--line-h); }
+
+.tree-style {
+    background: rgba(56,189,248,.02);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin: 0 16px 14px; overflow: hidden;
+    transition: border-color .2s;
+}
+[data-theme="light"] .tree-style { background: rgba(0,136,187,.025); }
+.tree-style:hover { border-color: var(--line-h); }
+
+.tree-toggle {
+    width: 100%; border: none; background: transparent;
+    text-align: left; padding: 12px 16px;
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    cursor: pointer; transition: background .15s;
+    color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.tree-toggle:hover { background: rgba(56,189,248,.04); }
+[data-theme="light"] .tree-toggle:hover { background: rgba(0,136,187,.04); }
+.brand-toggle { background: rgba(56,189,248,.025); }
+[data-theme="light"] .brand-toggle { background: rgba(0,136,187,.025); }
+
+.toggle-left { display: flex; align-items: center; gap: 10px; }
+.toggle-right { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.tree-content { padding: 0 16px 16px; }
+
+/* tree pills */
+.tree-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 600; }
+.pill-cov  { background: rgba(56,189,248,.10); color: #bae6fd; border: 1px solid rgba(56,189,248,.2); }
+.pill-it   { background: rgba(52,211,153,.09); color: #6ee7b7; border: 1px solid rgba(52,211,153,.2); }
+.pill-crit { background: rgba(248,113,113,.10); color: #fca5a5; border: 1px solid rgba(248,113,113,.2); }
+.pill-oos  { background: rgba(248,113,113,.08); color: #fca5a5; border: 1px solid rgba(248,113,113,.18); }
+.pill-req  { background: rgba(56,189,248,.08);  color: #bae6fd; border: 1px solid rgba(56,189,248,.18); }
+[data-theme="light"] .pill-cov  { background: rgba(0,136,187,.09); color: #005577; border-color: rgba(0,136,187,.2); }
+[data-theme="light"] .pill-it   { background: rgba(5,150,105,.08); color: #065f46; border-color: rgba(5,150,105,.2); }
+[data-theme="light"] .pill-crit { background: rgba(220,38,38,.07); color: #7f1d1d; border-color: rgba(220,38,38,.18); }
+[data-theme="light"] .pill-oos  { background: rgba(220,38,38,.06); color: #7f1d1d; border-color: rgba(220,38,38,.16); }
+[data-theme="light"] .pill-req  { background: rgba(0,136,187,.07); color: #003d55; border-color: rgba(0,136,187,.18); }
+
+/* ── detail tables ── */
+.detail-table { font-size: 11.5px; }
+.detail-table th { font-size: 9.5px; padding: 10px 10px; }
+.detail-table td { padding: 8px 10px; }
+
+.detail-sku { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent); font-size: 11px; }
+.number-cell { font-family: 'JetBrains Mono', monospace; text-align: right; font-size: 11px; }
+.critical-number { color: var(--danger); font-weight: 700; }
+
+/* ── risk & coverage badges ── */
+.risk-badge, .coverage-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 700; white-space: nowrap;
+}
+.risk-critical   { background: rgba(248,113,113,.12); color: #fca5a5; border: 1px solid rgba(248,113,113,.25); }
+.risk-high       { background: rgba(251,191,36,.10);  color: #fde68a; border: 1px solid rgba(251,191,36,.22); }
+.risk-safe       { background: rgba(52,211,153,.10);  color: #6ee7b7; border: 1px solid rgba(52,211,153,.22); }
+.risk-oos        { background: rgba(248,113,113,.10); color: #fca5a5; border: 1px solid rgba(248,113,113,.22); }
+.risk-req        { background: rgba(56,189,248,.10);  color: #bae6fd; border: 1px solid rgba(56,189,248,.22); }
+.coverage-critical { background: rgba(248,113,113,.12); color: #fca5a5; border: 1px solid rgba(248,113,113,.25); }
+.coverage-low      { background: rgba(251,191,36,.10);  color: #fde68a; border: 1px solid rgba(251,191,36,.22); }
+.coverage-good     { background: rgba(52,211,153,.10);  color: #6ee7b7; border: 1px solid rgba(52,211,153,.22); }
+
+[data-theme="light"] .risk-critical    { background: rgba(220,38,38,.08);  color: #7f1d1d; border-color: rgba(220,38,38,.20); }
+[data-theme="light"] .risk-high        { background: rgba(217,119,6,.08);  color: #7c3f00; border-color: rgba(217,119,6,.20); }
+[data-theme="light"] .risk-safe        { background: rgba(5,150,105,.08);  color: #065f46; border-color: rgba(5,150,105,.20); }
+[data-theme="light"] .risk-oos         { background: rgba(220,38,38,.07);  color: #7f1d1d; border-color: rgba(220,38,38,.18); }
+[data-theme="light"] .risk-req         { background: rgba(0,136,187,.08);  color: #003d55; border-color: rgba(0,136,187,.20); }
+[data-theme="light"] .coverage-critical{ background: rgba(220,38,38,.08);  color: #7f1d1d; border-color: rgba(220,38,38,.20); }
+[data-theme="light"] .coverage-low     { background: rgba(217,119,6,.08);  color: #7c3f00; border-color: rgba(217,119,6,.20); }
+[data-theme="light"] .coverage-good    { background: rgba(5,150,105,.08);  color: #065f46; border-color: rgba(5,150,105,.20); }
+
+/* ── section header ── */
+.section-head {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 10px; margin-bottom: 15px;
+}
+.section-title-row {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 14px; font-weight: 700; color: var(--text);
+}
+.section-title-row i { color: var(--accent); }
+
+.record-count {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(56,189,248,.08); border: 1px solid var(--line);
+    border-radius: 8px; padding: 4px 11px;
+    font-size: 11px; color: var(--text-2); font-weight: 500;
+}
+[data-theme="light"] .record-count { background: rgba(0,136,187,.06); }
+
+/* ── AI insight ── */
+.ai-insight {
+    margin-top: 18px; padding: 13px 17px;
+    background: rgba(56,189,248,.05);
+    border-radius: 11px; border-left: 3px solid var(--accent);
+    display: flex; align-items: flex-start; gap: 11px; flex-wrap: wrap;
+    transition: background .3s;
+}
+[data-theme="light"] .ai-insight { background: rgba(0,136,187,.06); }
+.ai-insight > i { color: var(--accent); font-size: 16px; margin-top: 2px; flex-shrink: 0; }
+.ai-insight p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.7; }
+[data-theme="light"] .ai-insight p { color: var(--text-2); }
+
+/* ── responsive ── */
+@media (max-width: 768px) {
+    .toggle-right { flex-wrap: wrap; }
+    .tree-style { margin-left: 0; }
+}
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+<!-- Page Header Banner -->
+<div class="pres-header">
+    <div class="pres-header-left">
+        <div class="pres-icon"><i class="fas fa-table"></i></div>
+        <div>
+            <h2>Presentation Inventory Dashboard</h2>
+            <p><i class="fas fa-upload" style="margin-right:4px;"></i>
+               Upload inventory data, save it into the database, and reuse it throughout the system.</p>
+        </div>
+    </div>
+    <div class="sync-badge">
+        <i class="fas fa-clock"></i> Last Sync: {{ last_sync }}
+    </div>
+</div>
+
+{% if error %}
+<div class="flash flash-danger">
+    <i class="fas fa-exclamation-circle"></i> {{ error }}
+</div>
+{% endif %}
+
+<!-- ── Upload / Batches Link ── -->
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap;">
+    <a href="{{ url_for('inventory.presentation_upload') }}"
+       style="display:inline-flex; align-items:center; gap:9px;
+              background:linear-gradient(135deg,rgba(127,119,221,.14),rgba(88,166,255,.08));
+              border:1px solid rgba(127,119,221,.30); border-radius:11px;
+              padding:11px 20px; text-decoration:none; transition:.15s;"
+       onmouseover="this.style.borderColor='rgba(127,119,221,.55)'"
+       onmouseout="this.style.borderColor='rgba(127,119,221,.30)'">
+        <i class="fas fa-cloud-upload-alt" style="font-size:16px; color:var(--accent);"></i>
+        <span>
+            <span style="display:block; font-size:13px; font-weight:700; color:var(--text);">Upload &amp; Batch History</span>
+            <span style="display:block; font-size:11px; color:var(--muted);">Upload new inventory files or manage saved batches</span>
+        </span>
+        <i class="fas fa-arrow-right" style="margin-left:6px; font-size:12px; color:var(--accent); opacity:.7;"></i>
+    </a>
+
+    {% if batches %}
+    <span style="font-size:11.5px; color:var(--muted);">
+        <i class="fas fa-database" style="margin-right:4px;"></i>
+        {{ batches|length }} saved batch{{ 'es' if batches|length != 1 else '' }}
+        — viewing
+        {% if selected_batch %}
+            batch <strong style="color:var(--text-2);">{{ selected_batch[:8] }}…</strong>
+        {% else %}
+            latest
+        {% endif %}
+    </span>
+    {% endif %}
+</div>
+
+{% if rows %}
+
+<!-- ── FILTER CARD ── -->
+<div class="filter-card">
+    <div class="filter-head">
+        <i class="fas fa-sliders-h"></i>
+        <h4>Filter Inventory Data</h4>
+    </div>
+    <form method="get">
+        <input type="hidden" name="batch_id" value="{{ selected_batch }}">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:13px;">
+            <div class="form-group" style="margin-bottom:0;">
+                <label><i class="fas fa-truck" style="margin-right:4px;"></i>Distributor</label>
+                <input class="form-control-inline" type="text" name="distributor"
+                       value="{{ distributor }}" placeholder="All">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label><i class="fas fa-trademark" style="margin-right:4px;"></i>Brand</label>
+                <input class="form-control-inline" type="text" name="brand"
+                       value="{{ brand }}" placeholder="All">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label><i class="fas fa-palette" style="margin-right:4px;"></i>Style</label>
+                <input class="form-control-inline" type="text" name="style"
+                       value="{{ style }}" placeholder="All">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label><i class="fas fa-exclamation-triangle" style="margin-right:4px;"></i>Risk Status</label>
+                <select class="form-control-inline" name="risk">
+                    <option value="">All</option>
+                    <option value="Critical"            {% if risk == 'Critical'            %}selected{% endif %}>🔴 Critical</option>
+                    <option value="High Risk"           {% if risk == 'High Risk'           %}selected{% endif %}>🟠 High Risk</option>
+                    <option value="Low Coverage"        {% if risk == 'Low Coverage'        %}selected{% endif %}>⚠️ Low Coverage</option>
+                    <option value="Out of Stock"        {% if risk == 'Out of Stock'        %}selected{% endif %}>📦 Out of Stock</option>
+                    <option value="New Order Required"  {% if risk == 'New Order Required'  %}selected{% endif %}>🛒 New Order Required</option>
+                    <option value="Safe"                {% if risk == 'Safe'                %}selected{% endif %}>🟢 Safe</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0; display:flex; align-items:flex-end; gap:8px;">
+                <button class="btn" type="submit" style="flex:1;">
+                    <i class="fas fa-filter"></i> Apply
+                </button>
+                <a class="btn btn-export"
+                   href="{{ url_for('inventory.presentation_export',
+                       batch_id=selected_batch,
+                       distributor=distributor,
+                       brand=brand,
+                       style=style,
+                       risk=risk) }}">
+                    <i class="fas fa-file-excel"></i> Export
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- ── STATS GRID ── -->
+<div class="stats-grid">
+    <div class="stat-card-e">
+        <div class="stat-icon-e"><i class="fas fa-chart-bar"></i></div>
+        <div class="stat-label-e">Total Rows</div>
+        <div class="stat-val-e">{{ summary.total_rows or 0 }}</div>
+        <div class="stat-note-e">Loaded into presentation view</div>
+    </div>
+    <div class="stat-card-e">
+        <div class="stat-icon-e"><i class="fas fa-skull-crossbones" style="color:var(--danger);"></i></div>
+        <div class="stat-label-e">Critical</div>
+        <div class="stat-val-e" style="color:var(--danger);">{{ summary.critical_count or 0 }}</div>
+        <div class="stat-note-e">Very low coverage rows</div>
+    </div>
+    <div class="stat-card-e">
+        <div class="stat-icon-e"><i class="fas fa-exclamation-triangle" style="color:var(--amber);"></i></div>
+        <div class="stat-label-e">High Risk</div>
+        <div class="stat-val-e" style="color:var(--amber);">{{ summary.high_risk_count or 0 }}</div>
+        <div class="stat-note-e">Rows needing attention</div>
+    </div>
+    <div class="stat-card-e">
+        <div class="stat-icon-e"><i class="fas fa-box-open" style="color:var(--danger);"></i></div>
+        <div class="stat-label-e">Out of Stock</div>
+        <div class="stat-val-e" style="color:var(--danger);">{{ summary.out_of_stock_count or 0 }}</div>
+        <div class="stat-note-e">No available quantity</div>
+    </div>
+    <div class="stat-card-e">
+        <div class="stat-icon-e"><i class="fas fa-clipboard-list" style="color:var(--accent);"></i></div>
+        <div class="stat-label-e">New Order Required</div>
+        <div class="stat-val-e" style="color:var(--accent);">{{ summary.new_order_count or 0 }}</div>
+        <div class="stat-note-e">Positive req new order</div>
+    </div>
+</div>
+
+<!-- ── MAPPED COLUMNS ── -->
+{% if mapping_used %}
+<div class="mapping-card">
+    <div class="card-head">
+        <i class="fas fa-code-branch"></i>
+        <h3>Mapped Columns</h3>
+    </div>
+    <div class="table-wrap">
+        <table style="width:auto; min-width:300px;">
+            <thead><tr><th>System Field</th><th>Uploaded Column</th></tr></thead>
+            <tbody>
+                {% for k, v in mapping_used.items() %}
+                <tr><td><strong>{{ k }}</strong></td><td>{{ v }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── INVENTORY TREE ── -->
+<div class="card" style="margin-bottom:18px;">
+    <div class="section-head">
+        <div class="section-title-row">
+            <i class="fas fa-sitemap"></i> Brand / Style Expandable Inventory Tree
+        </div>
+    </div>
+
+    {% if tree_data %}
+    <div class="inventory-tree">
+        {% for brand_node in tree_data %}
+        {% set brand_idx = loop.index %}
+        <div class="tree-brand">
+            <button type="button" class="tree-toggle brand-toggle"
+                    onclick="toggleTree('brand-{{ brand_idx }}', this)">
+                <div class="toggle-left">
+                    <i class="fas fa-tag" style="color:var(--accent);font-size:13px;"></i>
+                    <span>
+                        <strong style="font-size:13.5px;">{{ brand_node.brand }}</strong>
+                        <span style="font-size:11px;color:var(--muted);">({{ brand_node.row_count }} rows)</span>
+                    </span>
+                </div>
+                <div class="toggle-right">
+                    <span class="tree-pill pill-cov">📊 Cov {{ brand_node.avg_coverage }}%</span>
+                    <span class="tree-pill pill-it">🚚 +IT {{ brand_node.avg_coverage_incl_intransit }}%</span>
+                    <span class="tree-pill pill-crit">🔴 Crit {{ brand_node.critical_count }}</span>
+                    <span class="tree-pill pill-oos">📦 OOS {{ brand_node.out_of_stock_count }}</span>
+                    <span class="tree-pill pill-req">🛒 Req {{ brand_node.new_order_count }}</span>
+                    <i class="fas fa-chevron-down toggle-icon" style="font-size:11px;color:var(--muted);"></i>
+                </div>
+            </button>
+
+            <div id="brand-{{ brand_idx }}" class="tree-content" style="display:none;">
+                {% for style_node in brand_node.styles %}
+                <div class="tree-style">
+                    <button type="button" class="tree-toggle style-toggle"
+                            onclick="toggleTree('style-{{ brand_idx }}-{{ loop.index }}', this)">
+                        <div class="toggle-left">
+                            <i class="fas fa-layer-group" style="color:var(--muted);font-size:11px;"></i>
+                            <span>
+                                <strong style="font-size:12.5px;">{{ style_node.style }}</strong>
+                                <span style="font-size:11px;color:var(--muted);">({{ style_node.row_count }} rows)</span>
+                            </span>
+                        </div>
+                        <div class="toggle-right">
+                            <span class="tree-pill pill-cov">Cov {{ style_node.avg_coverage }}%</span>
+                            <span class="tree-pill pill-it">+IT {{ style_node.avg_coverage_incl_intransit }}%</span>
+                            <span class="tree-pill pill-crit">Crit {{ style_node.critical_count }}</span>
+                            <span class="tree-pill pill-oos">OOS {{ style_node.out_of_stock_count }}</span>
+                            <span class="tree-pill pill-req">Req {{ style_node.new_order_count }}</span>
+                            <i class="fas fa-chevron-down toggle-icon" style="font-size:11px;color:var(--muted);"></i>
+                        </div>
+                    </button>
+
+                    <div id="style-{{ brand_idx }}-{{ loop.index }}"
+                         class="tree-content" style="display:none; padding-top:0;">
+                        <div class="table-wrap" style="margin-top:10px;">
+                            <table class="detail-table">
+                                <thead>
+                                    <tr>
+                                        <th>Colour</th>
+                                        <th>Size</th>
+                                        <th>SKU</th>
+                                        <th style="text-align:right;">Stock</th>
+                                        <th style="text-align:right;">Pipeline</th>
+                                        <th style="text-align:right;">Available</th>
+                                        <th style="text-align:right;">In Transit</th>
+                                        <th style="text-align:right;">Avg 6M</th>
+                                        <th style="text-align:right;">Req Stock</th>
+                                        <th>Cov %</th>
+                                        <th style="text-align:right;">Cov+IT %</th>
+                                        <th style="text-align:right;">Req Order</th>
+                                        <th>Risk</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in style_node.rows %}
+                                    <tr>
+                                        <td>{{ row.Colour or '-' }}</td>
+                                        <td>{{ row.SSize or '-' }}</td>
+                                        <td><span class="detail-sku">{{ row.SKU }}</span></td>
+                                        <td class="number-cell">{{ row.StockQty or 0 }}</td>
+                                        <td class="number-cell">{{ row.PipelineQty or 0 }}</td>
+                                        <td class="number-cell {% if (row.AvailableQty or 0) <= 0 %}critical-number{% endif %}">
+                                            {{ row.AvailableQty or 0 }}
+                                        </td>
+                                        <td class="number-cell">{{ row.InTransitQty or 0 }}</td>
+                                        <td class="number-cell">{{ row.AvgMonthlySales6M or 0 }}</td>
+                                        <td class="number-cell">{{ row.ReqStock or 0 }}</td>
+                                        <td>
+                                            {% set cov = row.CoveragePct|float %}
+                                            {% if cov <= 20 %}
+                                                <span class="coverage-badge coverage-critical">{{ cov }}%</span>
+                                            {% elif cov < 100 %}
+                                                <span class="coverage-badge coverage-low">{{ cov }}%</span>
+                                            {% else %}
+                                                <span class="coverage-badge coverage-good">{{ cov }}%</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="number-cell">{{ row.CoveragePctInclInTransit or 0 }}%</td>
+                                        <td class="number-cell {% if (row.ReqNewOrderQty or 0) > 0 %}critical-number{% endif %}">
+                                            {{ row.ReqNewOrderQty or 0 }}
+                                        </td>
+                                        <td>
+                                            {% set risk = row.RiskStatus or '' %}
+                                            {% if risk == "Critical" %}
+                                                <span class="risk-badge risk-critical">🔴 Critical</span>
+                                            {% elif risk == "High Risk" %}
+                                                <span class="risk-badge risk-high">🟠 High Risk</span>
+                                            {% elif risk == "Out of Stock" %}
+                                                <span class="risk-badge risk-oos">📦 Out of Stock</span>
+                                            {% elif risk == "New Order Required" %}
+                                                <span class="risk-badge risk-req">🛒 New Order Required</span>
+                                            {% else %}
+                                                <span class="risk-badge risk-safe">🟢 Safe</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-sitemap"></i>
+        <h3>No grouped data found</h3>
+        <p>Upload or open a saved batch first to see the inventory tree.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ── FULL INVENTORY TABLE ── -->
+<div class="card" style="margin-bottom:18px;">
+    <div class="section-head">
+        <div class="section-title-row">
+            <i class="fas fa-table"></i> Saved Inventory Table
+        </div>
+        <span class="record-count">
+            <i class="fas fa-database"></i> {{ rows|length }} records
+        </span>
+    </div>
+
+    <div class="table-wrap">
+        <table class="detail-table">
+            <thead>
+                <tr>
+                    <th>Distributor</th>
+                    <th>Brand</th>
+                    <th>Style</th>
+                    <th>Colour</th>
+                    <th>Size</th>
+                    <th>SKU</th>
+                    <th style="text-align:right;">Stock</th>
+                    <th style="text-align:right;">Pipeline</th>
+                    <th style="text-align:right;">Available</th>
+                    <th style="text-align:right;">In Transit</th>
+                    <th style="text-align:right;">Avg 6M</th>
+                    <th style="text-align:right;">Req Mths</th>
+                    <th style="text-align:right;">Req Stock</th>
+                    <th>Cov %</th>
+                    <th style="text-align:right;">Cov+IT %</th>
+                    <th style="text-align:right;">Cov Mths</th>
+                    <th style="text-align:right;">Req Order</th>
+                    <th>Risk</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td>{{ row.Distributor or '-' }}</td>
+                    <td>{{ row.Brand or '-' }}</td>
+                    <td>{{ row.Style or '-' }}</td>
+                    <td>{{ row.Colour or '-' }}</td>
+                    <td>{{ row.SSize or '-' }}</td>
+                    <td><span class="detail-sku">{{ row.SKU }}</span></td>
+                    <td class="number-cell">{{ row.StockQty or 0 }}</td>
+                    <td class="number-cell">{{ row.PipelineQty or 0 }}</td>
+                    <td class="number-cell {% if (row.AvailableQty or 0) <= 0 %}critical-number{% endif %}">
+                        {{ row.AvailableQty or 0 }}
+                    </td>
+                    <td class="number-cell">{{ row.InTransitQty or 0 }}</td>
+                    <td class="number-cell">{{ row.AvgMonthlySales6M or 0 }}</td>
+                    <td class="number-cell">{{ row.StockReqMonths or 0 }}</td>
+                    <td class="number-cell">{{ row.ReqStock or 0 }}</td>
+                    <td>
+                        {% set cov = row.CoveragePct|float %}
+                        {% if cov <= 20 %}
+                            <span class="coverage-badge coverage-critical">{{ cov }}%</span>
+                        {% elif cov < 100 %}
+                            <span class="coverage-badge coverage-low">{{ cov }}%</span>
+                        {% else %}
+                            <span class="coverage-badge coverage-good">{{ cov }}%</span>
+                        {% endif %}
+                    </td>
+                    <td class="number-cell">{{ row.CoveragePctInclInTransit or 0 }}%</td>
+                    <td class="number-cell">{{ row.CoverageMonths or 0 }}</td>
+                    <td class="number-cell {% if (row.ReqNewOrderQty or 0) > 0 %}critical-number{% endif %}">
+                        {{ row.ReqNewOrderQty or 0 }}
+                    </td>
+                    <td>
+                        {% set risk = row.RiskStatus or '' %}
+                        {% if risk == "Critical" %}
+                            <span class="risk-badge risk-critical">🔴 Critical</span>
+                        {% elif risk == "High Risk" %}
+                            <span class="risk-badge risk-high">🟠 High Risk</span>
+                        {% elif risk == "Out of Stock" %}
+                            <span class="risk-badge risk-oos">📦 Out of Stock</span>
+                        {% elif risk == "New Order Required" %}
+                            <span class="risk-badge risk-req">🛒 New Order Required</span>
+                        {% else %}
+                            <span class="risk-badge risk-safe">🟢 Safe</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ── AI INSIGHT ── -->
+<div class="ai-insight">
+    <i class="fas fa-robot"></i>
+    <p>
+        <strong>AI Analysis:</strong>
+        {% set critical  = summary.critical_count or 0 %}
+        {% set high_risk = summary.high_risk_count or 0 %}
+        {% set oos       = summary.out_of_stock_count or 0 %}
+        {% set new_order = summary.new_order_count or 0 %}
+        {% if critical  > 0 %}⚠️ {{ critical }} critical items require immediate action. {% endif %}
+        {% if high_risk > 0 %}📉 {{ high_risk }} items at high risk of shortage. {% endif %}
+        {% if oos       > 0 %}📦 {{ oos }} items are out of stock. {% endif %}
+        {% if new_order > 0 %}🛒 {{ new_order }} items require new orders. {% endif %}
+        {% if critical == 0 and high_risk == 0 and oos == 0 and new_order == 0 %}
+            ✅ All inventory levels appear healthy. Continue monitoring.
+        {% endif %}
+    </p>
+</div>
+
+{% endif %}{# /if rows #}
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+function toggleTree(id, btn) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const icon = btn ? btn.querySelector('.toggle-icon') : null;
+    if (el.style.display === 'none' || !el.style.display) {
+        el.style.display = 'block';
+        if (icon) { icon.classList.replace('fa-chevron-down', 'fa-chevron-up'); }
+    } else {
+        el.style.display = 'none';
+        if (icon) { icon.classList.replace('fa-chevron-up', 'fa-chevron-down'); }
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+
+{% block title %}User Profile | {{ user.full_name }}{% endblock %}
+
+{% block page_title %}User Profile{% endblock %}
+
+{% block page_subtitle %}Review user details, face registration, and account status.{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── profile header ── */
+    .profile-header {
+        position: relative;
+        background: linear-gradient(135deg, rgba(127,119,221,.10) 0%, rgba(29,158,117,.05) 100%);
+        border-radius: var(--r-xl);
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(127,119,221,.28);
+        overflow: hidden;
+    }
+    .profile-header::before {
+        content: ''; position: absolute; inset: 0;
+        background-image:
+            repeating-linear-gradient(0deg,  transparent, transparent 28px, rgba(127,119,221,.04) 28px, rgba(127,119,221,.04) 29px),
+            repeating-linear-gradient(90deg, transparent, transparent 28px, rgba(127,119,221,.04) 28px, rgba(127,119,221,.04) 29px);
+        pointer-events: none;
+    }
+    .profile-header::after {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(127,119,221,.6), rgba(29,158,117,.4), transparent);
+    }
+    .profile-header-inner {
+        position: relative;
+        display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+    }
+
+    /* ── avatar ── */
+    .profile-avatar {
+        width: 78px; height: 78px; flex-shrink: 0;
+        background: rgba(127,119,221,.14);
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        border: 2px solid rgba(127,119,221,.45);
+        box-shadow: 0 0 22px rgba(127,119,221,.22);
+    }
+    .profile-avatar i { font-size: 38px; color: var(--accent); }
+
+    .profile-name {
+        margin: 0; font-size: 26px; font-weight: 700;
+        background: linear-gradient(135deg, var(--text) 30%, var(--accent));
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .profile-sub { color: var(--muted); margin: 6px 0 0; font-size: 12.5px; }
+
+    /* ── layout ── */
+    .profile-grid { gap: 22px; }
+
+    /* ── info cards ── */
+    .info-card {
+        background: var(--card-bg);
+        border-radius: var(--r-xl);
+        border: 1px solid rgba(127,119,221,.2);
+        overflow: hidden;
+        transition: border-color .2s, box-shadow .2s;
+    }
+    .info-card:hover {
+        border-color: rgba(127,119,221,.38);
+        box-shadow: 0 6px 22px rgba(127,119,221,.10);
+    }
+    .card-header {
+        display: flex; align-items: center; gap: 12px;
+        padding: 18px 22px;
+        border-bottom: 1px solid rgba(127,119,221,.12);
+        background: rgba(127,119,221,.04);
+    }
+    .card-header i { font-size: 22px; color: var(--accent); }
+    .card-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
+    .card-body { padding: 22px; }
+
+    /* ── info rows ── */
+    .info-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 11px 0; border-bottom: 1px solid rgba(127,119,221,.08);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label {
+        font-weight: 600; color: var(--muted); font-size: 13px;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .info-label i { color: var(--accent); width: 18px; font-size: 13px; }
+    .info-value { color: var(--text); font-size: 13.5px; word-break: break-word; text-align: right; }
+    .info-value-mono { font-family: var(--font-mono); font-size: 13px; }
+    .info-value-mono-sm { font-family: var(--font-mono); font-size: 12px; }
+
+    /* ── role badges ── */
+    .role-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    }
+    .role-super-admin { background: rgba(251,191,36,.14); color: var(--amber); border: 1px solid rgba(251,191,36,.3); }
+    .role-org-admin   { background: rgba(127,119,221,.14); color: var(--accent); border: 1px solid rgba(127,119,221,.3); }
+    .role-user        { background: rgba(148,163,184,.12); color: var(--text-2); border: 1px solid rgba(148,163,184,.25); }
+
+    /* ── status badges ── */
+    .status-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    }
+    .status-active          { background: rgba(52,211,153,.12); color: var(--green);           border: 1px solid rgba(52,211,153,.28); }
+    .status-inactive        { background: rgba(248,113,113,.12); color: var(--danger,#f87171); border: 1px solid rgba(248,113,113,.28); }
+    .face-status-registered     { background: rgba(52,211,153,.12); color: var(--green);       border: 1px solid rgba(52,211,153,.28); }
+    .face-status-not-registered { background: rgba(251,191,36,.12); color: var(--amber);       border: 1px solid rgba(251,191,36,.28); }
+
+    /* ── org badge ── */
+    .org-badge {
+        background: rgba(127,119,221,.10);
+        border: 1px solid rgba(127,119,221,.22);
+        padding: 3px 10px; border-radius: 999px;
+        font-size: 11px; font-family: var(--font-mono); color: var(--accent);
+    }
+    .org-badge-system {
+        background: rgba(251,191,36,.12); color: var(--amber);
+        border-color: rgba(251,191,36,.28);
+    }
+
+    /* ── face image ── */
+    .face-image-container {
+        background: rgba(0,0,0,.25); border-radius: var(--r);
+        padding: 16px; text-align: center; margin: 16px 0;
+        border: 1px solid rgba(127,119,221,.2);
+    }
+    .face-image {
+        width: 200px; height: 200px; border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid var(--accent);
+        box-shadow: 0 0 22px rgba(127,119,221,.28);
+    }
+    .face-img-fallback {
+        display: none; flex-direction: column; align-items: center;
+        gap: 8px; padding: 20px 0; color: var(--muted);
+    }
+    .face-fallback-icon { font-size: 36px; opacity: .35; }
+    .face-fallback-text { font-size: 12px; }
+
+    /* ── action buttons ── */
+    .btn-action {
+        background: rgba(127,119,221,.12);
+        border: 1px solid rgba(127,119,221,.4);
+        padding: 10px 20px; transition: all .2s;
+    }
+    .btn-action:hover {
+        background: rgba(127,119,221,.22);
+        border-color: rgba(127,119,221,.65);
+        box-shadow: 0 4px 14px rgba(127,119,221,.22);
+        transform: translateY(-1px);
+    }
+    .btn-danger {
+        background: rgba(248,113,113,.12);
+        border: 1px solid rgba(248,113,113,.3);
+        color: var(--danger,#f87171);
+        padding: 10px 20px; transition: all .2s;
+    }
+    .btn-danger:hover {
+        background: rgba(248,113,113,.22);
+        border-color: rgba(248,113,113,.52);
+        transform: translateY(-1px);
+    }
+    .btn-full { width: 100%; }
+    .action-buttons { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+    .form-inline { display: inline; }
+
+    /* ── misc ── */
+    .divider { margin: 18px 0; border-top: 1px solid rgba(127,119,221,.14); }
+
+    .info-tip {
+        background: rgba(127,119,221,.05);
+        border-radius: var(--r); padding: 12px 14px;
+        margin-top: 14px; font-size: 12px; color: var(--muted);
+        display: flex; align-items: center; gap: 10px;
+        border: 1px solid rgba(127,119,221,.1);
+    }
+    .info-tip i { color: var(--accent); font-size: 14px; flex-shrink: 0; }
+    .info-tip.tip-amber  { background: rgba(251,191,36,.05); border-color: rgba(251,191,36,.15); }
+    .info-tip.tip-amber i { color: var(--amber); }
+    .info-tip-centered   { justify-content: center; margin-top: 12px; }
+    .info-tip-spaced     { margin: 16px 0; }
+    .info-tip-control    { margin-top: 12px; }
+
+    .account-control-title { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .account-control-title i { color: var(--accent); }
+    .account-control-title h4 { margin: 0; font-size: 14px; font-weight: 600; }
+
+    .footer-stats {
+        margin-top: 22px; display: flex; gap: 14px;
+        flex-wrap: wrap; justify-content: space-between; align-items: center;
+    }
+    .footer-pills { display: flex; gap: 12px; flex-wrap: wrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Profile Header -->
+<div class="profile-header">
+    <div class="profile-header-inner">
+        <div class="profile-avatar">
+            <i class="fas fa-user-astronaut"></i>
+        </div>
+        <div>
+            <h2 class="profile-name">{{ user.full_name }}</h2>
+            <p class="profile-sub">
+                <i class="fas fa-id-card"></i> Account profile, face authentication, and active status management.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-2 profile-grid">
+    <!-- Basic Information Card -->
+    <div class="info-card">
+        <div class="card-header">
+            <i class="fas fa-info-circle"></i>
+            <h3>Basic Information</h3>
+        </div>
+        <div class="card-body">
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-user"></i> Full Name</span>
+                <span class="info-value">{{ user.full_name }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-at"></i> Username</span>
+                <span class="info-value info-value-mono">{{ user.username }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-envelope"></i> Email</span>
+                <span class="info-value">{{ user.email or '-' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-shield-alt"></i> Role</span>
+                <span class="info-value">
+                    {% if user.role_name == 'super_admin' %}
+                        <span class="role-badge role-super-admin"><i class="fas fa-crown"></i> super_admin</span>
+                    {% elif user.role_name == 'org_admin' %}
+                        <span class="role-badge role-org-admin"><i class="fas fa-user-tie"></i> org_admin</span>
+                    {% else %}
+                        <span class="role-badge role-user"><i class="fas fa-user"></i> user</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-heartbeat"></i> Account Status</span>
+                <span class="info-value">
+                    {% if user.is_active %}
+                        <span class="status-badge status-active"><i class="fas fa-check-circle"></i> Active</span>
+                    {% else %}
+                        <span class="status-badge status-inactive"><i class="fas fa-ban"></i> Inactive</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-building"></i> Organization</span>
+                <span class="info-value">
+                    {% if user.org_id %}
+                        <span class="org-badge">{{ user.org_id }}</span>
+                    {% else %}
+                        <span class="org-badge org-badge-system">
+                            <i class="fas fa-globe"></i> System
+                        </span>
+                    {% endif %}
+                </span>
+            </div>
+
+            <!-- Account Control (for admins only, not self) -->
+            {% if current_user.role_name in ["super_admin", "org_admin"] and current_user.id != user.id %}
+                <div class="divider"></div>
+                <div class="account-control-title">
+                    <i class="fas fa-toggle-on"></i>
+                    <h4>Account Control</h4>
+                </div>
+                {% if user.is_active %}
+                    <form method="post" action="{{ url_for('users.update_user_status', user_id=user.id) }}"
+                          onsubmit="return confirm('Deactivating this user will prevent them from logging in. Their data will be preserved. Are you sure?');">
+                        <input type="hidden" name="is_active" value="0">
+                        <button class="btn btn-danger btn-full" type="submit">
+                            <i class="fas fa-ban"></i> Deactivate User
+                        </button>
+                    </form>
+                {% else %}
+                    <form method="post" action="{{ url_for('users.update_user_status', user_id=user.id) }}">
+                        <input type="hidden" name="is_active" value="1">
+                        <button class="btn btn-action btn-full" type="submit">
+                            <i class="fas fa-check-circle"></i> Activate User
+                        </button>
+                    </form>
+                {% endif %}
+                <div class="info-tip info-tip-control">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Deactivating a user prevents login while preserving data and face registration.</span>
+                </div>
+            {% endif %}
+
+            {% if current_user.role_name in ["super_admin", "org_admin"] and current_user.id == user.id %}
+                <div class="divider"></div>
+                <div class="info-tip">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>You cannot deactivate your own account. Contact another administrator if needed.</span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Face Authentication Card -->
+    <div class="info-card">
+        <div class="card-header">
+            <i class="fas fa-face-smile"></i>
+            <h3>Face Authentication</h3>
+        </div>
+        <div class="card-body">
+            {% if face_record %}
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-check-circle"></i> Status</span>
+                    <span class="info-value">
+                        <span class="status-badge face-status-registered">
+                            <i class="fas fa-check-circle"></i> Registered
+                        </span>
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-calendar"></i> Registered At</span>
+                    <span class="info-value info-value-mono-sm">{{ face_record.created_at }}</span>
+                </div>
+
+                {% if face_record.face_image_path %}
+                    <div class="face-image-container">
+                        <img src="{{ url_for('static', filename=face_record.face_image_path) }}"
+                             alt="Registered Face"
+                             class="face-image"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="face-img-fallback">
+                            <i class="fas fa-image face-fallback-icon"></i>
+                            <span class="face-fallback-text">Image not available</span>
+                        </div>
+                        <div class="info-tip info-tip-centered">
+                            <i class="fas fa-camera"></i>
+                            <span>Registered face image for AI authentication</span>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="action-buttons">
+                    <a class="btn btn-action" href="{{ url_for('auth.register_face', user_id=user.id) }}">
+                        <i class="fas fa-sync-alt"></i> Re-register Face
+                    </a>
+                    <form class="form-inline" method="post" action="{{ url_for('auth.delete_face', user_id=user.id) }}"
+                          onsubmit="return confirm('Delete face data for this user? The user will need to re-register.');">
+                        <button class="btn btn-danger" type="submit">
+                            <i class="fas fa-trash-alt"></i> Delete Face
+                        </button>
+                    </form>
+                </div>
+
+                <div class="info-tip">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Re-registering replaces existing face data. Face data is encrypted and stored securely.</span>
+                </div>
+
+            {% else %}
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-exclamation-triangle"></i> Status</span>
+                    <span class="info-value">
+                        <span class="status-badge face-status-not-registered">
+                            <i class="fas fa-exclamation-triangle"></i> Not Registered
+                        </span>
+                    </span>
+                </div>
+
+                <div class="info-tip tip-amber info-tip-spaced">
+                    <i class="fas fa-info-circle"></i>
+                    <span>No face data is stored for this user yet. Face authentication will not be available.</span>
+                </div>
+
+                <div class="action-buttons">
+                    <a class="btn btn-action btn-full" href="{{ url_for('auth.register_face', user_id=user.id) }}">
+                        <i class="fas fa-camera"></i> Register Face
+                    </a>
+                </div>
+
+                <div class="info-tip">
+                    <i class="fas fa-lightbulb"></i>
+                    <span>Face registration enables AI-powered login. The user should look straight into the camera during registration.</span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Footer Stats -->
+<div class="footer-stats">
+    <div class="footer-pills">
+        <div class="pill pill-purple">
+            <i class="fas fa-database"></i> SQL Server Active
+        </div>
+        <div class="pill pill-green">
+            <i class="fas fa-robot"></i> AI Agent Active
+        </div>
+    </div>
+    <a class="btn btn-outline" href="javascript:history.back()">
+        <i class="fas fa-arrow-left"></i> Back
+    </a>
+</div>
+{% endblock %}

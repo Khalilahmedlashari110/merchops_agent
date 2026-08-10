@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Alert</title>
+</head>
+<body style="font-family: Arial, sans-serif; color: #1f2d3a;">
+    <h2>{{ alert_type }} Inventory Alert</h2>
+    <p>Generated at: {{ generated_at }}</p>
+    <p>Below are the top high-sales risky SKUs based on the latest saved inventory batch.</p>
+
+    <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+        <thead style="background: #eef4f8;">
+            <tr>
+                <th>SKU</th>
+                <th>Brand</th>
+                <th>Style</th>
+                <th>Colour</th>
+                <th>Size</th>
+                <th>Avg 6M</th>
+                <th>Available</th>
+                <th>Coverage %</th>
+                <th>Coverage Incl InTransit %</th>
+                <th>Req New Order</th>
+                <th>Risk</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>{{ row.SKU }}</td>
+                <td>{{ row.Brand }}</td>
+                <td>{{ row.Style }}</td>
+                <td>{{ row.Colour }}</td>
+                <td>{{ row.SSize }}</td>
+                <td>{{ row.AvgMonthlySales6M }}</td>
+                <td>{{ row.AvailableQty }}</td>
+                <td>{{ row.CoveragePct }}</td>
+                <td>{{ row.CoveragePctInclInTransit }}</td>
+                <td>{{ row.ReqNewOrderQty }}</td>
+                <td>{{ row.RiskStatus }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

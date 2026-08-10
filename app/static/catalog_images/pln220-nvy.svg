@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480">
+  <rect width="640" height="480" fill="#f3f6ff"/>
+  <rect x="120" y="70" width="400" height="340" rx="28" fill="#dbeafe"/>
+  <path d="M210 155h220l44 58-52 42-28-30v132H246V225l-28 30-52-42 44-58z" fill="#1e3a8a" stroke="#bfdbfe" stroke-width="8"/>
+  <text x="320" y="430" text-anchor="middle" font-family="Arial" font-size="28" font-weight="700" fill="#172554">PLN220-NVY</text>
+</svg>

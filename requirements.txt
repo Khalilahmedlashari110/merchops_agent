@@ -1,0 +1,13 @@
+anthropic
+apscheduler
+face-recognition
+flask
+flask-login
+numpy
+opencv-python
+openpyxl
+pandas
+playwright
+pyodbc
+python-dotenv
+pytest

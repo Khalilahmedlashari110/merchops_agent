@@ -1,0 +1,1457 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | MerchOps Agent{% endblock %}
+{% block page_title %}Operations Dashboard{% endblock %}
+{% block page_subtitle %}Email agent, inventory risk, and sender operations{% endblock %}
+
+{% block extra_css %}
+<style>
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.dash-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: end;
+}
+
+.dash-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--green);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.dash-eyebrow::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 99px;
+    background: var(--green);
+    box-shadow: 0 0 0 4px rgba(52, 211, 153, .12);
+}
+
+.dash-title {
+    color: var(--text);
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 1.15;
+}
+
+.dash-copy {
+    max-width: 760px;
+    margin-top: 8px;
+    color: var(--text-2);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.dash-user {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.dash-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 30px;
+    padding: 6px 11px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: rgba(125, 211, 252, .05);
+    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.dash-badge i {
+    color: var(--accent);
+    font-size: 11px;
+}
+
+.dash-badge.warning i {
+    color: var(--amber);
+}
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.kpi-card {
+    min-height: 136px;
+    padding: 16px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--accent);
+}
+
+.kpi-card.danger::before { background: var(--danger); }
+.kpi-card.warning::before { background: var(--amber); }
+.kpi-card.success::before { background: var(--green); }
+
+.kpi-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.kpi-label {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.kpi-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(125, 211, 252, .08);
+    color: var(--accent);
+    flex: 0 0 auto;
+}
+
+.danger .kpi-icon {
+    background: rgba(248, 113, 113, .1);
+    color: var(--danger);
+}
+
+.warning .kpi-icon {
+    background: rgba(251, 191, 36, .1);
+    color: var(--amber);
+}
+
+.success .kpi-icon {
+    background: rgba(52, 211, 153, .1);
+    color: var(--green);
+}
+
+.kpi-value {
+    margin-top: 18px;
+    color: var(--text);
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0;
+}
+
+.kpi-text {
+    margin-top: 8px;
+    color: var(--text-2);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.ops-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(340px, .9fr);
+    gap: 14px;
+}
+
+.panel {
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    overflow: hidden;
+}
+
+.panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.panel-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.panel-title i {
+    color: var(--accent);
+}
+
+.panel-sub {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.panel-body {
+    padding: 18px;
+}
+
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.action-tile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 58px;
+    padding: 12px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: rgba(125, 211, 252, .035);
+    color: var(--text);
+    transition: border-color .15s, background .15s, transform .15s;
+}
+
+.action-tile:hover {
+    border-color: var(--line-h);
+    background: rgba(125, 211, 252, .08);
+    transform: translateY(-1px);
+}
+
+.action-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(96, 165, 250, .1);
+    color: var(--blue);
+    flex: 0 0 auto;
+}
+
+.action-title {
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.action-sub {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 10.5px;
+}
+
+.risk-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.risk-row {
+    display: grid;
+    grid-template-columns: 118px minmax(0, 1fr) 42px;
+    align-items: center;
+    gap: 12px;
+}
+
+.risk-name {
+    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.risk-track {
+    height: 8px;
+    border-radius: 99px;
+    background: rgba(148, 163, 184, .12);
+    overflow: hidden;
+}
+
+.risk-fill {
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+    transition: width .45s ease;
+}
+
+.risk-fill.danger { background: var(--danger); }
+.risk-fill.warning { background: var(--amber); }
+.risk-fill.success { background: var(--green); }
+
+.risk-count {
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-align: right;
+}
+
+.module-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.email-analysis {
+    display: grid;
+    grid-template-columns: minmax(0, .9fr) minmax(360px, 1.1fr);
+    gap: 14px;
+}
+
+.response-score {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.score-ring {
+    width: 94px;
+    height: 94px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background:
+        radial-gradient(circle at center, var(--card-bg) 57%, transparent 58%),
+        conic-gradient(var(--green) calc(var(--score, 0) * 1%), rgba(148, 163, 184, .14) 0);
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.response-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    flex: 1;
+}
+
+.response-stat {
+    padding: 11px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: rgba(148, 163, 184, .04);
+}
+
+.response-stat strong {
+    display: block;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 18px;
+}
+
+.response-stat span {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.recommend-list,
+.reminder-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.recommend-item,
+.reminder-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: start;
+    padding: 12px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: rgba(148, 163, 184, .035);
+}
+
+.recommend-item {
+    grid-template-columns: auto minmax(0, 1fr);
+}
+
+.recommend-item i,
+.reminder-icon {
+    color: var(--amber);
+    margin-top: 2px;
+}
+
+.reminder-main {
+    min-width: 0;
+}
+
+.reminder-subject {
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.reminder-meta,
+.recommend-text {
+    margin-top: 3px;
+    color: var(--text-2);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.reminder-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.module-card {
+    min-height: 176px;
+    padding: 16px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.module-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.module-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(34, 211, 238, .1);
+    color: var(--cyan);
+}
+
+.module-state {
+    padding: 4px 8px;
+    border: 1px solid rgba(52, 211, 153, .22);
+    border-radius: 999px;
+    color: var(--green);
+    background: rgba(52, 211, 153, .07);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.module-title {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.module-text {
+    color: var(--text-2);
+    font-size: 12px;
+    line-height: 1.6;
+    flex: 1;
+}
+
+.module-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.api-card {
+    display: grid;
+    grid-template-columns: minmax(220px, .8fr) minmax(0, 1.4fr) auto;
+    gap: 0;
+    align-items: stretch;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    overflow: hidden;
+}
+
+.api-main,
+.api-actions {
+    padding: 16px 18px;
+    border-right: 1px solid var(--card-border);
+}
+
+.api-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.api-main i {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(125, 211, 252, .08);
+    color: var(--accent);
+}
+
+.api-title {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.api-sub {
+    margin-top: 3px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+}
+
+.api-metrics {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(90px, 1fr));
+}
+
+.api-metric {
+    padding: 14px 12px;
+    border-right: 1px solid var(--card-border);
+}
+
+.api-metric:last-child {
+    border-right: none;
+}
+
+.api-value {
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.api-label {
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.api-bar {
+    margin-top: 9px;
+    height: 4px;
+    border-radius: 99px;
+    background: rgba(148, 163, 184, .12);
+    overflow: hidden;
+}
+
+.cm-fill {
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    transition: width .35s ease;
+}
+
+.cm-fill.hi { background: var(--green); }
+.cm-fill.mid { background: var(--amber); }
+.cm-fill.lo { background: var(--danger); }
+
+.api-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-right: none;
+}
+
+.api-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.api-status.online {
+    border-color: rgba(52, 211, 153, .24);
+    background: rgba(52, 211, 153, .07);
+    color: var(--green);
+}
+
+.api-status.error {
+    border-color: rgba(248, 113, 113, .24);
+    background: rgba(248, 113, 113, .07);
+    color: var(--danger);
+}
+
+.icon-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: rgba(125, 211, 252, .05);
+    color: var(--text-2);
+    cursor: pointer;
+}
+
+.icon-btn:hover {
+    border-color: var(--line-h);
+    color: var(--accent);
+}
+
+.icon-btn.spinning i {
+    animation: spin .7s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.inventory-card {
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    overflow: hidden;
+}
+
+.inventory-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.inventory-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.mini-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 26px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--card-border);
+    color: var(--text-2);
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.mini-pill.danger {
+    color: var(--danger);
+    border-color: rgba(248, 113, 113, .24);
+    background: rgba(248, 113, 113, .07);
+}
+
+.mini-pill.success {
+    color: var(--green);
+    border-color: rgba(52, 211, 153, .24);
+    background: rgba(52, 211, 153, .07);
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+.dash-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 980px;
+}
+
+.dash-table th {
+    padding: 11px 12px;
+    color: var(--muted);
+    background: var(--table-head);
+    border-bottom: 1px solid var(--card-border);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.dash-table td {
+    padding: 11px 12px;
+    color: var(--text-2);
+    border-bottom: 1px solid rgba(125, 211, 252, .08);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.dash-table tbody tr:hover td {
+    background: var(--table-hover);
+}
+
+.td-strong {
+    color: var(--text);
+    font-weight: 800;
+}
+
+.td-num,
+.td-rank {
+    font-family: var(--font-mono);
+    color: var(--text);
+}
+
+.td-rank {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.risk-tag,
+.coverage-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.tag-danger {
+    color: var(--danger);
+    background: rgba(248, 113, 113, .08);
+}
+
+.tag-warning {
+    color: var(--amber);
+    background: rgba(251, 191, 36, .09);
+}
+
+.tag-success {
+    color: var(--green);
+    background: rgba(52, 211, 153, .08);
+}
+
+.tag-info {
+    color: var(--accent);
+    background: rgba(125, 211, 252, .08);
+}
+
+.empty-state {
+    padding: 48px 18px;
+    text-align: center;
+}
+
+.empty-state i {
+    color: var(--muted);
+    font-size: 26px;
+    margin-bottom: 12px;
+}
+
+.empty-state h3 {
+    color: var(--text);
+    font-size: 15px;
+    margin-bottom: 6px;
+}
+
+.empty-state p {
+    color: var(--text-2);
+    font-size: 12px;
+}
+
+.empty-state a {
+    color: var(--accent);
+    font-weight: 800;
+}
+
+[data-theme="light"] .kpi-card,
+[data-theme="light"] .panel,
+[data-theme="light"] .module-card,
+[data-theme="light"] .api-card,
+[data-theme="light"] .inventory-card {
+    box-shadow: 0 10px 26px rgba(125, 211, 252, .08);
+}
+
+@media (max-width: 1180px) {
+    .kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ops-grid,
+    .api-card {
+        grid-template-columns: 1fr;
+    }
+
+    .api-main,
+    .api-actions {
+        border-right: none;
+        border-bottom: 1px solid var(--card-border);
+    }
+
+    .api-actions {
+        border-bottom: none;
+        justify-content: space-between;
+    }
+
+    .module-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .email-analysis {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+@media (max-width: 720px) {
+    .dash-head,
+    .kpi-grid,
+    .module-grid,
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .dash-user {
+        justify-content: flex-start;
+    }
+
+    .dash-title {
+        font-size: 24px;
+    }
+
+    .panel-head,
+    .inventory-head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .risk-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .risk-count {
+        text-align: left;
+    }
+
+    .api-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .api-metric {
+        border-bottom: 1px solid var(--card-border);
+    }
+
+    .response-score {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .reminder-item {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .reminder-action {
+        grid-column: 2;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% set crit_n = namespace(v=0) %}
+{% set high_n = namespace(v=0) %}
+{% set oos_n = namespace(v=0) %}
+{% set ord_n = namespace(v=0) %}
+{% set ok_n = namespace(v=0) %}
+{% for r in top_sales_rows %}
+    {% if r.RiskStatus == 'Critical' %}
+        {% set crit_n.v = crit_n.v + 1 %}
+    {% elif r.RiskStatus == 'High Risk' %}
+        {% set high_n.v = high_n.v + 1 %}
+    {% elif r.RiskStatus == 'Out of Stock' %}
+        {% set oos_n.v = oos_n.v + 1 %}
+    {% elif r.RiskStatus == 'New Order Required' %}
+        {% set ord_n.v = ord_n.v + 1 %}
+    {% else %}
+        {% set ok_n.v = ok_n.v + 1 %}
+    {% endif %}
+{% endfor %}
+{% set total_rows = top_sales_rows | length %}
+{% set urgent_n = crit_n.v + oos_n.v %}
+{% set watch_n = high_n.v + ord_n.v %}
+
+<div class="dashboard">
+    <section class="dash-head">
+        <div>
+            <div class="dash-eyebrow">Live operations</div>
+            <h2 class="dash-title">Welcome back, {{ current_user.full_name }}</h2>
+            <p class="dash-copy">
+                A focused view of inventory risk, email automation, sender access, and API capacity.
+                The items that need attention stay near the top, with quick paths into the tools your team uses most.
+            </p>
+        </div>
+        <div class="dash-user">
+            <span class="dash-badge"><i class="fas fa-user-shield"></i>{{ current_user.role_name | replace('_', ' ') | title }}</span>
+            {% if current_user.org_id %}
+                <span class="dash-badge"><i class="fas fa-building"></i>Org {{ current_user.org_id }}</span>
+            {% else %}
+                <span class="dash-badge warning"><i class="fas fa-crown"></i>System level</span>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="kpi-grid">
+        <article class="kpi-card">
+            <div class="kpi-top">
+                <span class="kpi-label">Tracked SKUs</span>
+                <span class="kpi-icon"><i class="fas fa-boxes-stacked"></i></span>
+            </div>
+            <div>
+                <div class="kpi-value">{{ total_rows }}</div>
+                <div class="kpi-text">High-sales inventory rows currently visible in this dashboard.</div>
+            </div>
+        </article>
+
+        <article class="kpi-card danger">
+            <div class="kpi-top">
+                <span class="kpi-label">Critical / OOS</span>
+                <span class="kpi-icon"><i class="fas fa-circle-exclamation"></i></span>
+            </div>
+            <div>
+                <div class="kpi-value">{{ urgent_n }}</div>
+                <div class="kpi-text">Items that need the fastest replenishment decision.</div>
+            </div>
+        </article>
+
+        <article class="kpi-card warning">
+            <div class="kpi-top">
+                <span class="kpi-label">High Risk / Reorder</span>
+                <span class="kpi-icon"><i class="fas fa-triangle-exclamation"></i></span>
+            </div>
+            <div>
+                <div class="kpi-value">{{ watch_n }}</div>
+                <div class="kpi-text">Items to watch before they become urgent.</div>
+            </div>
+        </article>
+
+        <article class="kpi-card success">
+            <div class="kpi-top">
+                <span class="kpi-label">Healthy Stock</span>
+                <span class="kpi-icon"><i class="fas fa-circle-check"></i></span>
+            </div>
+            <div>
+                <div class="kpi-value">{{ ok_n.v }}</div>
+                <div class="kpi-text">Items with coverage inside the current target range.</div>
+            </div>
+        </article>
+    </section>
+
+    <section class="ops-grid">
+        <article class="panel">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-title"><i class="fas fa-bolt"></i>Quick actions</div>
+                    <div class="panel-sub">Jump straight into the active work areas.</div>
+                </div>
+                <span class="mini-pill success"><i class="fas fa-circle"></i>Agent online</span>
+            </div>
+            <div class="panel-body">
+                <div class="quick-actions">
+                    <a class="action-tile" href="{{ url_for('email_agent.inbox') }}">
+                        <span class="action-icon"><i class="fas fa-inbox"></i></span>
+                        <span>
+                            <span class="action-title">AI Email Inbox</span>
+                            <span class="action-sub">Review parsed requests</span>
+                        </span>
+                    </a>
+                    <a class="action-tile" href="{{ url_for('email_agent.drafts') }}">
+                        <span class="action-icon"><i class="fas fa-file-lines"></i></span>
+                        <span>
+                            <span class="action-title">Email Drafts</span>
+                            <span class="action-sub">Approve generated replies</span>
+                        </span>
+                    </a>
+                    <a class="action-tile" href="{{ url_for('data_chatbot.index') }}">
+                        <span class="action-icon"><i class="fas fa-comments"></i></span>
+                        <span>
+                            <span class="action-title">Data Chatbot</span>
+                            <span class="action-sub">Ask business data questions</span>
+                        </span>
+                    </a>
+                    {% if current_user.role_name == "super_admin" %}
+                    <a class="action-tile" href="{{ url_for('organization.list_organizations') }}">
+                        <span class="action-icon"><i class="fas fa-building"></i></span>
+                        <span>
+                            <span class="action-title">Organizations</span>
+                            <span class="action-sub">Manage tenants</span>
+                        </span>
+                    </a>
+                    {% elif current_user.org_id %}
+                    <a class="action-tile" href="{{ url_for('organization.organization_users', org_id=current_user.org_id) }}">
+                        <span class="action-icon"><i class="fas fa-users"></i></span>
+                        <span>
+                            <span class="action-title">Users</span>
+                            <span class="action-sub">Manage access</span>
+                        </span>
+                    </a>
+                    {% endif %}
+                    <a class="action-tile" href="{{ url_for('email_agent.approved_senders') }}">
+                        <span class="action-icon"><i class="fas fa-user-check"></i></span>
+                        <span>
+                            <span class="action-title">Approved Senders</span>
+                            <span class="action-sub">Control sender tables</span>
+                        </span>
+                    </a>
+                    <a class="action-tile" href="{{ url_for('email_agent.accounts') }}">
+                        <span class="action-icon"><i class="fas fa-at"></i></span>
+                        <span>
+                            <span class="action-title">Email Accounts</span>
+                            <span class="action-sub">Manage connected inboxes</span>
+                        </span>
+                    </a>
+                </div>
+            </div>
+        </article>
+
+        <article class="panel">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-title"><i class="fas fa-chart-simple"></i>Risk mix</div>
+                    <div class="panel-sub">Distribution across the high-sales inventory slice.</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                {% if total_rows > 0 %}
+                <div class="risk-stack">
+                    <div class="risk-row">
+                        <div class="risk-name">Critical / OOS</div>
+                        <div class="risk-track"><div class="risk-fill danger" data-pct="{{ (urgent_n / total_rows * 100)|round(1) }}"></div></div>
+                        <div class="risk-count">{{ urgent_n }}</div>
+                    </div>
+                    <div class="risk-row">
+                        <div class="risk-name">High Risk</div>
+                        <div class="risk-track"><div class="risk-fill warning" data-pct="{{ (watch_n / total_rows * 100)|round(1) }}"></div></div>
+                        <div class="risk-count">{{ watch_n }}</div>
+                    </div>
+                    <div class="risk-row">
+                        <div class="risk-name">Healthy</div>
+                        <div class="risk-track"><div class="risk-fill success" data-pct="{{ (ok_n.v / total_rows * 100)|round(1) }}"></div></div>
+                        <div class="risk-count">{{ ok_n.v }}</div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <h3>No inventory data</h3>
+                    <p>Upload presentation inventory to populate risk metrics.</p>
+                </div>
+                {% endif %}
+            </div>
+        </article>
+    </section>
+
+    <section class="email-analysis">
+        <article class="panel">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-title"><i class="fas fa-envelope-circle-check"></i>Email response analysis</div>
+                    <div class="panel-sub">Received mail, prepared responses, sent replies, and unanswered items.</div>
+                </div>
+                <span class="mini-pill {% if email_analysis.summary.overdue > 0 %}danger{% else %}success{% endif %}">
+                    <i class="fas fa-bell"></i>{{ email_analysis.summary.overdue }} reminders
+                </span>
+            </div>
+            <div class="panel-body">
+                <div class="response-score">
+                    <div class="score-ring" style="--score: {{ email_analysis.summary.response_rate }}">
+                        {{ email_analysis.summary.response_rate }}%
+                    </div>
+                    <div class="response-stats">
+                        <div class="response-stat">
+                            <strong>{{ email_analysis.summary.total_received }}</strong>
+                            <span>Received</span>
+                        </div>
+                        <div class="response-stat">
+                            <strong>{{ email_analysis.summary.responses_sent }}</strong>
+                            <span>Answered</span>
+                        </div>
+                        <div class="response-stat">
+                            <strong>{{ email_analysis.summary.drafts_waiting }}</strong>
+                            <span>Drafts ready</span>
+                        </div>
+                        <div class="response-stat">
+                            <strong>{{ email_analysis.summary.no_response }}</strong>
+                            <span>No response</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <article class="panel">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-title"><i class="fas fa-clock"></i>Follow-up reminders</div>
+                    <div class="panel-sub">Items not sent yet. Reminder window: {{ email_analysis.summary.reminder_hours }} hours.</div>
+                </div>
+                <a class="module-link" href="{{ url_for('email_agent.monitor') }}">View monitor <i class="fas fa-chevron-right"></i></a>
+            </div>
+            <div class="panel-body">
+                {% if email_analysis.pending %}
+                <div class="reminder-list">
+                    {% for item in email_analysis.pending %}
+                    <div class="reminder-item">
+                        <i class="fas fa-bell reminder-icon"></i>
+                        <div class="reminder-main">
+                            <div class="reminder-subject" title="{{ item.subject_line }}">{{ item.subject_line or '(No subject)' }}</div>
+                            <div class="reminder-meta">
+                                {{ item.sender_email }} - {{ item.age_hours or 0 }}h old - {{ item.recommendation }}
+                            </div>
+                        </div>
+                        {% if item.draft_id %}
+                            <a class="reminder-action" href="{{ url_for('email_agent.draft_detail', draft_id=item.draft_id) }}">Open draft <i class="fas fa-chevron-right"></i></a>
+                        {% else %}
+                            <a class="reminder-action" href="{{ url_for('email_agent.monitor') }}">Review <i class="fas fa-chevron-right"></i></a>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-circle-check"></i>
+                    <h3>All caught up</h3>
+                    <p>No unanswered email reminders are waiting right now.</p>
+                </div>
+                {% endif %}
+            </div>
+        </article>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head">
+            <div>
+                <div class="panel-title"><i class="fas fa-lightbulb"></i>Recommendations</div>
+                <div class="panel-sub">Suggested next actions based on received emails and response status.</div>
+            </div>
+        </div>
+        <div class="panel-body">
+            <div class="recommend-list">
+                {% for recommendation in email_analysis.recommendations %}
+                <div class="recommend-item">
+                    <i class="fas fa-arrow-trend-up"></i>
+                    <div class="recommend-text">{{ recommendation }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="module-grid">
+        <article class="module-card">
+            <div class="module-top">
+                <span class="module-icon"><i class="fas fa-envelope-open-text"></i></span>
+                <span class="module-state">Active</span>
+            </div>
+            <div class="module-title">Email AI Agent</div>
+            <p class="module-text">Polls connected inboxes, understands inventory enquiries, and prepares natural replies for review.</p>
+            <a class="module-link" href="{{ url_for('email_agent.monitor') }}">Open monitor <i class="fas fa-chevron-right"></i></a>
+        </article>
+
+        <article class="module-card">
+            <div class="module-top">
+                <span class="module-icon"><i class="fas fa-table"></i></span>
+                <span class="module-state">Live</span>
+            </div>
+            <div class="module-title">Data Chatbot</div>
+            <p class="module-text">Gives assigned users a focused chat interface for approved SQL-backed business tables.</p>
+            <a class="module-link" href="{{ url_for('data_chatbot.index') }}">Open chatbot <i class="fas fa-chevron-right"></i></a>
+        </article>
+
+        <article class="module-card">
+            <div class="module-top">
+                <span class="module-icon"><i class="fas fa-users-gear"></i></span>
+                <span class="module-state">Ready</span>
+            </div>
+            <div class="module-title">Access Control</div>
+            <p class="module-text">Role-based users, organization boundaries, and sender permissions stay visible from one place.</p>
+            {% if current_user.org_id %}
+                <a class="module-link" href="{{ url_for('organization.organization_users', org_id=current_user.org_id) }}">Manage users <i class="fas fa-chevron-right"></i></a>
+            {% else %}
+                <a class="module-link" href="{{ url_for('organization.list_organizations') }}">Manage organizations <i class="fas fa-chevron-right"></i></a>
+            {% endif %}
+        </article>
+    </section>
+
+    <section class="api-card">
+        <div class="api-main">
+            <i class="fas fa-microchip"></i>
+            <div>
+                <div class="api-title">Anthropic API capacity</div>
+                <div class="api-sub" id="acLastRefresh">Fetching live data...</div>
+            </div>
+        </div>
+        <div class="api-metrics" id="acMetrics">
+            <div class="api-metric">
+                <div class="api-value" id="acReqRemain">-</div>
+                <div class="api-label">Requests</div>
+                <div class="api-bar"><div class="cm-fill hi" id="acReqBar"></div></div>
+            </div>
+            <div class="api-metric">
+                <div class="api-value" id="acTokRemain">-</div>
+                <div class="api-label">Tokens</div>
+                <div class="api-bar"><div class="cm-fill hi" id="acTokBar"></div></div>
+            </div>
+            <div class="api-metric">
+                <div class="api-value" id="acInRemain">-</div>
+                <div class="api-label">Input</div>
+                <div class="api-bar"><div class="cm-fill hi" id="acInBar"></div></div>
+            </div>
+            <div class="api-metric">
+                <div class="api-value" id="acOutRemain">-</div>
+                <div class="api-label">Output</div>
+                <div class="api-bar"><div class="cm-fill hi" id="acOutBar"></div></div>
+            </div>
+            <div class="api-metric">
+                <div class="api-value" id="acReqReset">-</div>
+                <div class="api-label">Resets</div>
+                <div class="api-bar"><div class="cm-fill hi" id="acResetBar"></div></div>
+            </div>
+        </div>
+        <div class="api-actions">
+            <a class="api-status" href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener">
+                <i class="fas fa-wallet"></i>Console
+            </a>
+            <span class="api-status" id="acStatusPill"><i class="fas fa-spinner fa-spin"></i>Loading</span>
+            <button type="button" class="icon-btn" id="acRefreshBtn" title="Refresh API limits" onclick="acRefresh(true)">
+                <i class="fas fa-rotate-right"></i>
+            </button>
+        </div>
+    </section>
+
+    <section class="inventory-card">
+        <div class="inventory-head">
+            <div>
+                <div class="panel-title"><i class="fas fa-ranking-star"></i>Top high-sales inventory</div>
+                <div class="panel-sub">Ranked by 6-month average monthly sales and current risk status.</div>
+            </div>
+            <div class="inventory-tools">
+                <span class="mini-pill success"><i class="fas fa-chart-line"></i>{{ total_rows }} SKUs</span>
+                {% if urgent_n > 0 %}
+                    <span class="mini-pill danger"><i class="fas fa-exclamation"></i>{{ urgent_n }} urgent</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if top_sales_rows %}
+        <div class="table-wrap">
+            <table class="dash-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>SKU</th>
+                        <th>Brand</th>
+                        <th>Style</th>
+                        <th>Colour</th>
+                        <th>Size</th>
+                        <th>Avg 6M Sales</th>
+                        <th>Available</th>
+                        <th>Coverage</th>
+                        <th>Incl Transit</th>
+                        <th>Req Order</th>
+                        <th>Risk</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in top_sales_rows %}
+                    <tr>
+                        <td class="td-rank">{{ loop.index }}</td>
+                        <td><span class="td-strong">{{ row.SKU }}</span></td>
+                        <td>{{ row.Brand }}</td>
+                        <td>{{ row.Style }}</td>
+                        <td>{{ row.Colour }}</td>
+                        <td class="td-num">{{ row.SSize }}</td>
+                        <td class="td-num">{{ row.AvgMonthlySales6M }}</td>
+                        <td class="td-num">{{ row.AvailableQty }}</td>
+                        <td>
+                            {% set cp = row.CoveragePct | float %}
+                            {% if cp <= 20 %}
+                                <span class="coverage-tag tag-danger">{{ row.CoveragePct }}%</span>
+                            {% elif cp < 100 %}
+                                <span class="coverage-tag tag-warning">{{ row.CoveragePct }}%</span>
+                            {% else %}
+                                <span class="coverage-tag tag-success">{{ row.CoveragePct }}%</span>
+                            {% endif %}
+                        </td>
+                        <td class="td-num">{{ row.CoveragePctInclInTransit }}%</td>
+                        <td class="td-num">{{ row.ReqNewOrderQty }}</td>
+                        <td>
+                            {% if row.RiskStatus in ['Critical', 'Out of Stock'] %}
+                                <span class="risk-tag tag-danger"><i class="fas fa-circle-exclamation"></i>{{ row.RiskStatus }}</span>
+                            {% elif row.RiskStatus == 'High Risk' %}
+                                <span class="risk-tag tag-warning"><i class="fas fa-triangle-exclamation"></i>{{ row.RiskStatus }}</span>
+                            {% elif row.RiskStatus == 'New Order Required' %}
+                                <span class="risk-tag tag-info"><i class="fas fa-cart-plus"></i>{{ row.RiskStatus }}</span>
+                            {% else %}
+                                <span class="risk-tag tag-success"><i class="fas fa-check"></i>{{ row.RiskStatus }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <h3>No inventory data</h3>
+            <p>No dashboard stock rows are available for the current configuration.</p>
+        </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.risk-fill[data-pct]').forEach(function (el) {
+        el.style.width = el.getAttribute('data-pct') + '%';
+    });
+
+    acRefresh(false);
+    setInterval(function () { acRefresh(false); }, 5 * 60 * 1000);
+});
+
+function acRefresh(force) {
+    var btn = document.getElementById('acRefreshBtn');
+    if (btn) btn.classList.add('spinning');
+    fetch('/api/credits')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (btn) btn.classList.remove('spinning');
+            if (d.status === 'ok') {
+                acSetMetric('acReqRemain', 'acReqBar', d.requests_remaining, d.requests_limit);
+                acSetMetric('acTokRemain', 'acTokBar', d.tokens_remaining, d.tokens_limit);
+                acSetMetric('acInRemain', 'acInBar', d.input_tokens_remaining, d.input_tokens_limit);
+                acSetMetric('acOutRemain', 'acOutBar', d.output_tokens_remaining, d.output_tokens_limit);
+                acSetReset('acReqReset', 'acResetBar', d.tokens_reset);
+                var pill = document.getElementById('acStatusPill');
+                if (pill) {
+                    pill.className = 'api-status online';
+                    pill.innerHTML = '<i class="fas fa-circle-check"></i>Online';
+                }
+                var refresh = document.getElementById('acLastRefresh');
+                if (refresh) refresh.textContent = 'Updated ' + new Date(d.cached_at * 1000).toLocaleTimeString();
+            } else {
+                acSetError(d.message || 'API error');
+            }
+        })
+        .catch(function () {
+            if (btn) btn.classList.remove('spinning');
+            acSetError('Network error');
+        });
+}
+
+function acFmt(n) {
+    var v = parseInt(n, 10);
+    if (isNaN(v)) return '-';
+    if (v >= 1000000) return Math.round(v / 1000000).toLocaleString() + 'M';
+    if (v >= 1000) return (v / 1000).toFixed(0) + 'k';
+    return String(v);
+}
+
+function acClass(pct) {
+    if (pct <= 20) return 'cm-fill lo';
+    if (pct <= 50) return 'cm-fill mid';
+    return 'cm-fill hi';
+}
+
+function acSetMetric(valId, barId, remaining, limit) {
+    var el = document.getElementById(valId);
+    var bar = document.getElementById(barId);
+    if (!el || !bar) return;
+    var rem = parseInt(remaining, 10);
+    var lim = parseInt(limit, 10);
+    if (isNaN(rem)) {
+        el.textContent = '-';
+        bar.style.width = '0%';
+        return;
+    }
+    el.textContent = acFmt(rem) + (isNaN(lim) ? '' : ' / ' + acFmt(lim));
+    var pct = isNaN(lim) || lim === 0 ? 100 : Math.min(100, (rem / lim) * 100);
+    bar.style.width = pct + '%';
+    bar.className = acClass(pct);
+}
+
+function acSetReset(valId, barId, resetISO) {
+    var el = document.getElementById(valId);
+    var bar = document.getElementById(barId);
+    if (!el || !resetISO) {
+        if (el) el.textContent = '-';
+        return;
+    }
+    var secs = Math.max(0, Math.round((new Date(resetISO) - Date.now()) / 1000));
+    el.textContent = Math.floor(secs / 60) + 'm ' + (secs % 60) + 's';
+    if (bar) {
+        bar.style.width = Math.min(100, secs / 60 * 100) + '%';
+        bar.className = 'cm-fill hi';
+    }
+}
+
+function acSetError(msg) {
+    var pill = document.getElementById('acStatusPill');
+    if (pill) {
+        pill.className = 'api-status error';
+        pill.innerHTML = '<i class="fas fa-circle-xmark"></i>Error';
+    }
+    var sub = document.getElementById('acLastRefresh');
+    if (sub) sub.textContent = msg;
+}
+</script>
+{% endblock %}

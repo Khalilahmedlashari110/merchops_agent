@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Auto Login{% endblock %}
+{% block page_title %}Authenticating...{% endblock %}
+{% block page_subtitle %}Checking identity using AI vision{% endblock %}
+
+{% block content %}
+<div style="text-align:center; padding:40px;">
+
+    <video id="video" autoplay playsinline style="width:320px; border-radius:12px;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <h3 id="status">Initializing camera...</h3>
+    <p class="muted">Please look at the camera</p>
+
+    <div style="margin-top:20px;">
+        <a class="btn btn-outline" href="{{ url_for('auth.login') }}">Use Manual Login</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const statusText = document.getElementById("face-status");
+
+let detecting = false;
+let scanInterval = null;
+let mediaStream = null;
+let successfulLogin = false;
+
+let matchStreak = 0;
+let previousImageSignature = null;
+
+async function startCamera() {
+    stopCamera();
+
+    try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user" },
+            audio: false
+        });
+
+        video.srcObject = mediaStream;
+        statusText.innerText = "Camera ready. Please move naturally...";
+        startAutoCapture();
+    } catch (err) {
+        statusText.innerText = "Camera not available. Please use manual login.";
+    }
+}
+
+function stopCamera() {
+    if (scanInterval) {
+        clearInterval(scanInterval);
+        scanInterval = null;
+    }
+
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+    }
+
+    video.srcObject = null;
+    detecting = false;
+}
+
+function captureFrameAndSignature() {
+    if (!video.videoWidth || !video.videoHeight) {
+        return null;
+    }
+
+    const context = canvas.getContext("2d");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const sample = context.getImageData(0, 0, Math.min(64, canvas.width), Math.min(64, canvas.height)).data;
+
+    let signature = 0;
+    for (let i = 0; i < sample.length; i += 16) {
+        signature += sample[i] + sample[i + 1] + sample[i + 2];
+    }
+
+    return new Promise(resolve => {
+        canvas.toBlob(blob => {
+            resolve({ blob, signature });
+        }, "image/jpeg", 0.9);
+    });
+}
+
+function hasLiveMotion(currentSignature) {
+    if (previousImageSignature === null) {
+        previousImageSignature = currentSignature;
+        return false;
+    }
+
+    const diff = Math.abs(currentSignature - previousImageSignature);
+    previousImageSignature = currentSignature;
+
+    return diff > 500;
+}
+
+async function sendFrame() {
+    if (detecting || successfulLogin) return;
+    if (!video.srcObject) return;
+
+    detecting = true;
+
+    try {
+        const frame = await captureFrameAndSignature();
+
+        if (!frame || !frame.blob) {
+            detecting = false;
+            return;
+        }
+
+        const liveMotion = hasLiveMotion(frame.signature);
+
+        const formData = new FormData();
+        formData.append("face_image", frame.blob, "frame.jpg");
+
+        const response = await fetch("/auth/face-login-api", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            if (data.confidence >= 75 && liveMotion) {
+                matchStreak += 1;
+                statusText.innerText = `Live face verified... ${matchStreak}/3`;
+            } else {
+                matchStreak = 0;
+                statusText.innerText = "Face matched but liveness not verified. Please blink or move slightly.";
+            }
+
+            if (matchStreak >= 3) {
+                successfulLogin = true;
+                statusText.innerText = `Welcome ${data.user.name}. Logging in...`;
+                stopCamera();
+                window.location.href = data.redirect;
+                return;
+            }
+        } else {
+            matchStreak = 0;
+            statusText.innerText = data.message || "Scanning...";
+        }
+
+    } catch (err) {
+        statusText.innerText = "Camera scan failed. Please use manual login.";
+    }
+
+    detecting = false;
+}
+
+function startAutoCapture() {
+    if (scanInterval) clearInterval(scanInterval);
+    scanInterval = setInterval(sendFrame, 1800);
+}
+
+window.addEventListener("beforeunload", stopCamera);
+window.addEventListener("load", startCamera);
+</script>
+
+{% endblock %}

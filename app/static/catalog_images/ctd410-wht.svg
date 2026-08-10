@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480">
+  <rect width="640" height="480" fill="#f8fafc"/>
+  <rect x="120" y="70" width="400" height="340" rx="28" fill="#e2e8f0"/>
+  <path d="M230 115h180l42 72v170H188V187l42-72z" fill="#ffffff" stroke="#94a3b8" stroke-width="8"/>
+  <path d="M278 115l42 58 42-58" fill="none" stroke="#94a3b8" stroke-width="8"/>
+  <text x="320" y="430" text-anchor="middle" font-family="Arial" font-size="28" font-weight="700" fill="#334155">CTD410-WHT</text>
+</svg>

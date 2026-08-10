@@ -1,0 +1,888 @@
+{% extends "base.html" %}
+
+{% block title %}Carrier Uploading | MerchOps AI{% endblock %}
+{% block page_title %}Carrier Uploading{% endblock %}
+{% block page_subtitle %}Upload UPS manifest files and actual billing data, then review tracking match quality before reporting.{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ups-grid {
+        display: grid;
+        grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+    }
+
+    .ups-panel {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .ups-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--card-border);
+        background: rgba(99,102,241,.035);
+    }
+
+    .ups-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--text);
+    }
+
+    .ups-title i {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(251,191,36,.10);
+        border: 1px solid rgba(251,191,36,.22);
+        color: var(--amber);
+    }
+
+    .ups-panel-body { padding: 16px; }
+
+    .ups-field-label {
+        display: block;
+        margin-bottom: 7px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: var(--muted);
+    }
+
+    .ups-input-row {
+        display: flex;
+        gap: 8px;
+    }
+
+    .ups-input {
+        width: 100%;
+        background: var(--input-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 7px;
+        padding: 10px 12px;
+        color: var(--text);
+        font: 500 12.5px var(--font);
+        outline: none;
+        transition: border-color .16s, box-shadow .16s, background .16s;
+    }
+
+    .ups-input:focus {
+        background: var(--card-bg);
+        border-color: rgba(99,102,241,.44);
+        box-shadow: 0 0 0 3px rgba(99,102,241,.10);
+    }
+
+    .ups-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        border: 1px solid rgba(99,102,241,.28);
+        border-radius: 7px;
+        background: rgba(99,102,241,.10);
+        color: var(--accent);
+        padding: 10px 13px;
+        font: 800 12px var(--font);
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background .16s, border-color .16s, color .16s;
+    }
+
+    .ups-btn:hover {
+        background: rgba(99,102,241,.18);
+        border-color: rgba(99,102,241,.46);
+        color: var(--text);
+    }
+
+    .ups-btn-primary {
+        background: rgba(52,211,153,.10);
+        border-color: rgba(52,211,153,.28);
+        color: var(--green);
+    }
+
+    .ups-btn-primary:hover {
+        background: rgba(52,211,153,.18);
+        border-color: rgba(52,211,153,.46);
+        color: var(--text);
+    }
+
+    .ups-meta {
+        margin-top: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+    }
+
+    .ups-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--card-border);
+        background: rgba(148,163,184,.06);
+        color: var(--text-2);
+        border-radius: 999px;
+        padding: 4px 9px;
+        font-size: 10.5px;
+        font-weight: 700;
+    }
+
+    .ups-path {
+        margin-top: 14px;
+        padding: 10px 12px;
+        border: 1px solid var(--card-border);
+        border-radius: 7px;
+        background: rgba(148,163,184,.045);
+        color: var(--text-2);
+        font: 500 11.5px var(--font-mono);
+        overflow-wrap: anywhere;
+    }
+
+    .ups-kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .ups-kpi {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 14px;
+        min-height: 76px;
+    }
+
+    .ups-kpi-num {
+        font-size: 24px;
+        line-height: 1;
+        font-weight: 850;
+        color: var(--accent);
+    }
+
+    .ups-kpi-label {
+        margin-top: 7px;
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: var(--muted);
+    }
+
+    .ups-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+    }
+
+    .ups-table th {
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--card-border);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        background: rgba(99,102,241,.035);
+    }
+
+    .ups-table td {
+        padding: 12px;
+        border-bottom: 1px solid rgba(148,163,184,.10);
+        color: var(--text-2);
+        vertical-align: middle;
+    }
+
+    .ups-table tr:last-child td { border-bottom: 0; }
+    .ups-table tbody tr:hover td { background: rgba(99,102,241,.035); }
+
+    .ups-table-scroll { overflow-x: auto; }
+
+    .ups-preview-panel { margin-top: 16px; }
+
+    .ups-preview-table {
+        min-width: 980px;
+        table-layout: auto;
+    }
+
+    .ups-preview-table th,
+    .ups-preview-table td {
+        max-width: 220px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .ups-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .ups-file-name {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        color: var(--text);
+        font-weight: 700;
+    }
+
+    .ups-file-name i { color: var(--amber); }
+
+    .ups-ext {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid rgba(99,102,241,.22);
+        background: rgba(99,102,241,.08);
+        color: var(--accent);
+        border-radius: 999px;
+        padding: 3px 8px;
+        font-size: 10px;
+        font-weight: 800;
+    }
+
+    .ups-empty {
+        padding: 44px 22px;
+        text-align: center;
+        color: var(--muted);
+    }
+
+    .ups-empty i {
+        width: 58px;
+        height: 58px;
+        margin-bottom: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: rgba(99,102,241,.07);
+        border: 1px solid rgba(99,102,241,.14);
+        font-size: 22px;
+        color: var(--accent);
+    }
+
+    .ups-empty-title {
+        margin-bottom: 6px;
+        color: var(--text-2);
+        font-size: 14px;
+        font-weight: 800;
+    }
+
+    .ups-alert {
+        margin-top: 12px;
+        border: 1px solid rgba(248,113,113,.24);
+        background: rgba(248,113,113,.08);
+        color: var(--danger);
+        border-radius: 7px;
+        padding: 10px 12px;
+        font-size: 12px;
+        font-weight: 650;
+    }
+
+    .ups-alert-list {
+        margin-top: 12px;
+        display: grid;
+        gap: 8px;
+    }
+
+    .ups-tabs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--card-border);
+    }
+
+    .ups-tab-btn {
+        border: 0;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        color: var(--muted);
+        padding: 12px 14px 11px;
+        font: 800 12px var(--font);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ups-tab-btn:hover,
+    .ups-tab-btn.active {
+        color: var(--text);
+        border-bottom-color: var(--accent);
+    }
+
+    .ups-tab-panel { display: none; }
+    .ups-tab-panel.active { display: block; }
+
+    @media (max-width: 980px) {
+        .ups-grid { grid-template-columns: 1fr; }
+        .ups-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .ups-input-row { flex-direction: column; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ups-tabs" role="tablist" aria-label="UPS management tabs">
+    <button class="ups-tab-btn active" type="button" data-ups-tab="raw" role="tab" aria-selected="true">
+        <i class="fas fa-folder-open"></i>
+        Raw Manifest Data
+    </button>
+    <button class="ups-tab-btn" type="button" data-ups-tab="billing" role="tab" aria-selected="false">
+        <i class="fas fa-file-invoice-dollar"></i>
+        Actual Billing
+    </button>
+    <button class="ups-tab-btn" type="button" data-ups-tab="files" role="tab" aria-selected="false">
+        <i class="fas fa-file-lines"></i>
+        Uploaded Files
+    </button>
+</div>
+
+<div class="ups-tab-panel active" id="ups-tab-raw" role="tabpanel">
+    <div class="ups-kpis">
+        <div class="ups-kpi">
+            <div class="ups-kpi-num">{{ (raw_files | length)|whole_number }}</div>
+            <div class="ups-kpi-label">Raw Files Found</div>
+        </div>
+        <div class="ups-kpi">
+            <div class="ups-kpi-num">{{ total_rows|whole_number }}</div>
+            <div class="ups-kpi-label">Preview Rows</div>
+        </div>
+        <div class="ups-kpi">
+            <div class="ups-kpi-num">{{ total_columns|whole_number }}</div>
+            <div class="ups-kpi-label">Clean Columns</div>
+        </div>
+        <div class="ups-kpi">
+            <div class="ups-kpi-num">{{ total_size_kb|whole_number }}</div>
+            <div class="ups-kpi-label">Total KB</div>
+        </div>
+    </div>
+
+    <div class="ups-grid">
+        <section class="ups-panel">
+            <div class="ups-panel-header">
+                <div class="ups-title">
+                    <i class="fas fa-folder-open"></i>
+                    <span>Raw Data Source</span>
+                </div>
+            </div>
+            <div class="ups-panel-body">
+                <form method="post">
+                    <label class="ups-field-label" for="raw_folder">Folder Location</label>
+                    <div class="ups-input-row">
+                        <input class="ups-input" id="raw_folder" name="raw_folder" type="text" value="{{ folder_path }}" placeholder="D:\CarrierData\UPS\Raw">
+                        <button class="ups-btn" type="submit">
+                            <i class="fas fa-floppy-disk"></i>
+                            Save
+                        </button>
+                    </div>
+                </form>
+
+                <div class="ups-meta">
+                    {% for ext in allowed_extensions %}
+                    <span class="ups-pill"><i class="fas fa-file"></i>{{ ext }}</span>
+                    {% endfor %}
+                </div>
+
+                {% if folder_path %}
+                <div class="ups-path">{{ folder_path }}</div>
+                {% endif %}
+
+                {% if scan_errors %}
+                <div class="ups-alert-list">
+                    {% for error in scan_errors %}
+                    <div class="ups-alert"><i class="fas fa-triangle-exclamation"></i> {{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="ups-panel">
+            <div class="ups-panel-header">
+                <div class="ups-title">
+                    <i class="fas fa-truck-fast"></i>
+                    <span>UPS Raw Files</span>
+                </div>
+                {% if raw_files %}
+                <span class="ups-pill"><i class="fas fa-clock"></i> Latest first</span>
+                {% endif %}
+            </div>
+
+            {% if raw_files %}
+            <div class="ups-table-scroll">
+                <table class="ups-table">
+                    <thead>
+                        <tr>
+                            <th>File</th>
+                            <th>Type</th>
+                            <th>Size</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for file in raw_files %}
+                        <tr>
+                            <td><div class="ups-file-name"><i class="fas fa-file-lines"></i>{{ file.name }}</div></td>
+                            <td><span class="ups-ext">{{ file.extension }}</span></td>
+                            <td>{{ file.size_kb }} KB</td>
+                            <td><span class="ups-pill"><i class="fas fa-circle-check"></i> Ready</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="ups-empty">
+                <i class="fas fa-folder-tree"></i>
+                <div class="ups-empty-title">No raw UPS files loaded</div>
+                <div>Set a folder location to scan CSV, Excel, text, JSON, or XML files.</div>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <section class="ups-panel ups-preview-panel">
+        <div class="ups-panel-header">
+            <div class="ups-title">
+                <i class="fas fa-table-list"></i>
+                <span>Combined Clean Preview</span>
+            </div>
+            <div class="ups-toolbar">
+                {% if total_rows > preview_rows | length %}
+                <span class="ups-pill"><i class="fas fa-filter"></i> Showing first {{ preview_rows | length }} of {{ total_rows }}</span>
+                {% endif %}
+                <form method="post" action="{{ url_for('carrier.upload_ups') }}">
+                    <button class="ups-btn ups-btn-primary" type="submit" {% if not total_rows or scan_errors %}disabled{% endif %}>
+                        <i class="fas fa-database"></i>
+                        Upload Reviewed Data
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {% if preview_rows and preview_columns %}
+        <div class="ups-table-scroll">
+            <table class="ups-table ups-preview-table">
+                <thead>
+                    <tr>
+                        {% for column in preview_columns %}
+                        <th>{{ column }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in preview_rows %}
+                    <tr>
+                        {% for column in preview_columns %}
+                        <td title="{{ row.get(column, '') }}">{{ row.get(column, '') }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="ups-empty">
+            <i class="fas fa-table"></i>
+            <div class="ups-empty-title">No combined data to review</div>
+            <div>Set a valid UPS raw-data folder with readable files to generate the clean preview.</div>
+        </div>
+        {% endif %}
+    </section>
+</div>
+
+<div class="ups-tab-panel" id="ups-tab-billing" role="tabpanel">
+    <div class="ups-kpis">
+        <div class="ups-kpi">
+            <div class="ups-kpi-num">{{ billing_analysis.billing_tracking_count|whole_number }}</div>
+            <div class="ups-kpi-label">Actual Billing Rows</div>
+        </div>
+        <div class="ups-kpi">
+            <div class="ups-kpi-num">{{ actual_total_columns|whole_number }}</div>
+            <div class="ups-kpi-label">Billing Columns</div>
+        </div>
+        <div class="ups-kpi">
+            <div class="ups-kpi-num">{{ billing_analysis.matched_tracking_count|whole_number }}</div>
+            <div class="ups-kpi-label">Matched Tracking</div>
+        </div>
+        <div class="ups-kpi">
+            <div class="ups-kpi-num">{{ "Ready" if billing_analysis.billing_tracking_count else "New" }}</div>
+            <div class="ups-kpi-label">Actual Billing</div>
+        </div>
+    </div>
+
+    <section class="ups-panel">
+        <div class="ups-panel-header">
+            <div class="ups-title">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span>Actual UPS Billing</span>
+            </div>
+            {% if actual_billing_source_file %}
+            <span class="ups-pill"><i class="fas fa-file-csv"></i>{{ actual_billing_source_file }}</span>
+            {% endif %}
+        </div>
+        <div class="ups-panel-body">
+            <form method="post" action="{{ url_for('carrier.save_actual_billing_path') }}">
+                <label class="ups-field-label" for="actual_billing_path">Actual Billing File Path</label>
+                <div class="ups-input-row">
+                    <input class="ups-input" id="actual_billing_path" name="actual_billing_path" type="text" value="{{ actual_billing_path }}" placeholder="\\192.168.0.3\Temporary Files\khalil\Ali Saab Reports\UPS Billing\June 2024 UPS Outbound Data.csv">
+                    <button class="ups-btn" type="submit">
+                        <i class="fas fa-floppy-disk"></i>
+                        Save
+                    </button>
+                </div>
+            </form>
+
+            {% if actual_billing_path %}
+            <div class="ups-path">{{ actual_billing_path }}</div>
+            {% endif %}
+
+            {% if actual_billing_errors %}
+            <div class="ups-alert-list">
+                {% for error in actual_billing_errors %}
+                <div class="ups-alert"><i class="fas fa-triangle-exclamation"></i> {{ error }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <form method="post" action="{{ url_for('carrier.upload_actual_billing') }}" enctype="multipart/form-data" style="margin-top: 14px;">
+                <label class="ups-field-label" for="actual_billing_file">Upload Actual Billing CSV or Excel</label>
+                <div class="ups-input-row">
+                    <input class="ups-input" id="actual_billing_file" name="actual_billing_file" type="file" accept=".csv,.xlsx,.xls,.txt">
+                    <button class="ups-btn ups-btn-primary" type="submit">
+                        <i class="fas fa-database"></i>
+                        Upload Actual Billing
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if actual_preview_rows and actual_preview_columns %}
+        <div class="ups-table-scroll">
+            <table class="ups-table ups-preview-table">
+                <thead>
+                    <tr>
+                        {% for column in actual_preview_columns %}
+                        <th>{{ column }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in actual_preview_rows %}
+                    <tr>
+                        {% for column in actual_preview_columns %}
+                        <td title="{{ row.get(column, '') }}">{{ row.get(column, '') }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="ups-empty">
+            <i class="fas fa-file-invoice"></i>
+            <div class="ups-empty-title">No actual billing loaded</div>
+            <div>Save a readable file path or choose the CSV/Excel billing file to upload.</div>
+        </div>
+        {% endif %}
+    </section>
+
+    <section class="ups-panel ups-preview-panel">
+        <div class="ups-panel-header">
+            <div class="ups-title">
+                <i class="fas fa-magnifying-glass-chart"></i>
+                <span>Billing Match Analysis</span>
+            </div>
+            <div class="ups-toolbar">
+                <span class="ups-pill"><i class="fas fa-link"></i> Tracking ID Match</span>
+                <form method="post" action="{{ url_for('carrier.refresh_ups_report') }}">
+                    <button class="ups-btn" type="submit">
+                        <i class="fas fa-rotate"></i>
+                        Refresh Report Indexes
+                    </button>
+                </form>
+                <form method="post" action="{{ url_for('carrier.backfill_ups_fdm4_details') }}">
+                    <input type="hidden" name="next" value="{{ url_for('carrier.ups', tab='billing') }}">
+                    <button class="ups-btn ups-btn-primary" type="submit">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                        Update Missing FDM4 Details
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {% if billing_analysis.error %}
+        <div class="ups-panel-body">
+            <div class="ups-alert"><i class="fas fa-triangle-exclamation"></i> {{ billing_analysis.error }}</div>
+        </div>
+        {% else %}
+        <div class="ups-panel-body">
+            <div class="ups-kpis">
+                <div class="ups-kpi">
+                    <div class="ups-kpi-num">{{ billing_analysis.manifest_tracking_count|whole_number }}</div>
+                    <div class="ups-kpi-label">Manifest Tracking IDs</div>
+                </div>
+                <div class="ups-kpi">
+                    <div class="ups-kpi-num">{{ billing_analysis.billing_tracking_count|whole_number }}</div>
+                    <div class="ups-kpi-label">Billing Tracking IDs</div>
+                </div>
+                <div class="ups-kpi">
+                    <div class="ups-kpi-num">{{ billing_analysis.matched_tracking_count|whole_number }}</div>
+                    <div class="ups-kpi-label">Matched IDs</div>
+                </div>
+                <div class="ups-kpi">
+                    <div class="ups-kpi-num">{{ billing_analysis.missing_invoice_number_count|whole_number }}</div>
+                    <div class="ups-kpi-label">Missing Invoice Nos</div>
+                </div>
+            </div>
+            <div class="ups-kpis">
+                <div class="ups-kpi">
+                    <div class="ups-kpi-num">${{ billing_analysis.total_payment_amount|whole_number }}</div>
+                    <div class="ups-kpi-label">Total Charged</div>
+                </div>
+                <div class="ups-kpi">
+                    <div class="ups-kpi-num">{{ billing_analysis.total_billing_packages|whole_number }}</div>
+                    <div class="ups-kpi-label">Billed Packages</div>
+                </div>
+                <div class="ups-kpi">
+                    <div class="ups-kpi-num">{{ billing_analysis.manifest_missing_count|whole_number }}</div>
+                    <div class="ups-kpi-label">Manifest Missing In Billing</div>
+                </div>
+                <div class="ups-kpi">
+                    <div class="ups-kpi-num">{{ billing_analysis.billing_unmatched_count|whole_number }}</div>
+                    <div class="ups-kpi-label">Billing Missing In Manifest</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ups-grid ups-preview-panel">
+            <section class="ups-panel">
+                <div class="ups-panel-header">
+                    <div class="ups-title">
+                        <i class="fas fa-file-circle-question"></i>
+                        <span>Manifest Not In Billing</span>
+                    </div>
+                    <span class="ups-pill">{{ billing_analysis.manifest_missing_count|whole_number }} records</span>
+                </div>
+                <div class="ups-table-scroll">
+                    <table class="ups-table">
+                        <thead>
+                            <tr>
+                                <th>Tracking</th>
+                                <th>Source</th>
+                                <th>Recipient</th>
+                                <th>Zip</th>
+                                <th>Weight</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in billing_analysis.manifest_missing_rows %}
+                            <tr>
+                                <td>{{ row.tracking_number }}</td>
+                                <td>{{ row.source_file }}</td>
+                                <td>{{ row.recipient_name }}</td>
+                                <td>{{ row.zip_code }}</td>
+                                <td>{{ row.billed_weight }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5">No missing manifest records.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="ups-panel">
+                <div class="ups-panel-header">
+                    <div class="ups-title">
+                        <i class="fas fa-receipt"></i>
+                        <span>Billing Not In Manifest</span>
+                    </div>
+                    <span class="ups-pill">{{ billing_analysis.billing_unmatched_count|whole_number }} records</span>
+                </div>
+                <div class="ups-table-scroll">
+                    <table class="ups-table">
+                        <thead>
+                            <tr>
+                                <th>Tracking</th>
+                                <th>Invoice</th>
+                                <th>Month</th>
+                                <th>Service</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in billing_analysis.billing_unmatched_rows %}
+                            <tr>
+                                <td>{{ row.tracking_number }}</td>
+                                <td>{{ row.invoice_number }}</td>
+                                <td>{{ row.invoice_month }}</td>
+                                <td>{{ row.service_level }}</td>
+                                <td>${{ (row.billed_amount or 0)|whole_number }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5">No unmatched billing records.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <section class="ups-panel ups-preview-panel">
+            <div class="ups-panel-header">
+                <div class="ups-title">
+                    <i class="fas fa-file-circle-exclamation"></i>
+                    <span>Rows Missing Invoice Number</span>
+                </div>
+                <span class="ups-pill">{{ billing_analysis.missing_invoice_number_count|whole_number }} records</span>
+            </div>
+            <div class="ups-table-scroll">
+                <table class="ups-table">
+                    <thead>
+                        <tr>
+                            <th>Tracking</th>
+                            <th>Invoice</th>
+                            <th>Invoice Date</th>
+                            <th>Source</th>
+                            <th>Service</th>
+                            <th>Total Billed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in billing_analysis.missing_invoice_rows %}
+                        <tr>
+                            <td>{{ row.tracking_number }}</td>
+                            <td>{{ row.invoice_number }}</td>
+                            <td>{{ row.invoice_date }}</td>
+                            <td>{{ row.source_file }}</td>
+                            <td>{{ row.service_level }}</td>
+                            <td>${{ (row.total_billed_charge or 0)|whole_number }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6">No billing rows are missing invoice numbers.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+    </section>
+</div>
+
+<div class="ups-tab-panel" id="ups-tab-files" role="tabpanel">
+    <div class="ups-kpis">
+        <div class="ups-kpi">
+            <div class="ups-kpi-num">{{ (billing_analysis.source_files | length)|whole_number }}</div>
+            <div class="ups-kpi-label">Unique Files</div>
+        </div>
+        <div class="ups-kpi">
+            <div class="ups-kpi-num">{{ billing_analysis.total_billing_packages|whole_number }}</div>
+            <div class="ups-kpi-label">Tracking IDs</div>
+        </div>
+        <div class="ups-kpi">
+            <div class="ups-kpi-num">${{ billing_analysis.total_payment_amount|whole_number }}</div>
+            <div class="ups-kpi-label">Total Charged</div>
+        </div>
+        <div class="ups-kpi">
+            <div class="ups-kpi-num">{{ billing_analysis.billing_tracking_count|whole_number }}</div>
+            <div class="ups-kpi-label">Billing Records</div>
+        </div>
+    </div>
+
+    <section class="ups-panel">
+        <div class="ups-panel-header">
+            <div class="ups-title">
+                <i class="fas fa-file-lines"></i>
+                <span>Uploaded Source Files</span>
+            </div>
+            <span class="ups-pill">{{ (billing_analysis.source_files | length)|whole_number }} unique files</span>
+        </div>
+
+        {% if billing_analysis.error %}
+        <div class="ups-panel-body">
+            <div class="ups-alert"><i class="fas fa-triangle-exclamation"></i> {{ billing_analysis.error }}</div>
+        </div>
+        {% else %}
+        <div class="ups-table-scroll">
+            <table class="ups-table">
+                <thead>
+                    <tr>
+                        <th>Source File</th>
+                        <th>Rows</th>
+                        <th>Tracking IDs</th>
+                        <th>Total Charged</th>
+                        <th>First Uploaded</th>
+                        <th>Last Uploaded</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file in billing_analysis.source_files %}
+                    <tr>
+                        <td>{{ file.source_file }}</td>
+                        <td>{{ file.row_count|whole_number }}</td>
+                        <td>{{ file.package_count|whole_number }}</td>
+                        <td>${{ file.payment_amount|whole_number }}</td>
+                        <td>{{ file.first_uploaded_at }}</td>
+                        <td>{{ file.last_uploaded_at }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6">No uploaded source files found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const buttons = Array.from(document.querySelectorAll('[data-ups-tab]'));
+    const panels = {
+        raw: document.getElementById('ups-tab-raw'),
+        billing: document.getElementById('ups-tab-billing'),
+        files: document.getElementById('ups-tab-files')
+    };
+
+    function activate(tabName) {
+        const nextTab = panels[tabName] ? tabName : 'raw';
+        buttons.forEach((button) => {
+            const active = button.dataset.upsTab === nextTab;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        Object.entries(panels).forEach(([name, panel]) => {
+            panel.classList.toggle('active', name === nextTab);
+        });
+        localStorage.setItem('upsActiveTab', nextTab);
+    }
+
+    buttons.forEach((button) => {
+        button.addEventListener('click', () => activate(button.dataset.upsTab));
+    });
+
+    const requestedTab = new URLSearchParams(window.location.search).get('tab');
+    activate(requestedTab || localStorage.getItem('upsActiveTab') || 'raw');
+}());
+</script>
+{% endblock %}

@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory Requirements | MerchOps AI{% endblock %}
+
+{% block page_title %}Inventory Requirements{% endblock %}
+
+{% block page_subtitle %}Seed requirement months by distributor and brand.{% endblock %}
+
+{% block extra_css %}
+<style>
+.req-header {
+    background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.01)), var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.req-title {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.req-title i {
+    color: var(--accent);
+    font-size: 24px;
+}
+
+.req-title h2 {
+    margin: 0;
+    font-size: 21px;
+    color: var(--text);
+}
+
+.req-title p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.req-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, .38fr) minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.req-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.req-card-head {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.req-card-head h3 {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.req-card-head i {
+    color: var(--accent);
+}
+
+.req-card-body {
+    padding: 18px;
+}
+
+.req-form-grid {
+    display: grid;
+    gap: 14px;
+}
+
+.req-field label {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.req-control {
+    width: 100%;
+    border: 1px solid var(--card-border);
+    background: rgba(255,255,255,.04);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+}
+
+.req-control:focus {
+    outline: none;
+    border-color: rgba(33,212,253,.45);
+    box-shadow: 0 0 0 2px rgba(33,212,253,.1);
+}
+
+.req-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.req-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    color: white;
+    background: linear-gradient(135deg, var(--accent), #246bff);
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 12px;
+    text-decoration: none;
+}
+
+.req-btn.secondary {
+    background: rgba(148,163,184,.12);
+    color: var(--text);
+    border: 1px solid var(--card-border);
+}
+
+.req-btn.danger {
+    background: rgba(248,113,113,.12);
+    color: var(--danger);
+    border: 1px solid rgba(248,113,113,.25);
+}
+
+.req-note {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.req-table-wrap {
+    overflow-x: auto;
+}
+
+.req-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.req-table th,
+.req-table td {
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--card-border);
+    text-align: left;
+    font-size: 12px;
+}
+
+.req-table th {
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-size: 10px;
+}
+
+.req-table td {
+    color: var(--text);
+}
+
+.req-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 5px 9px;
+    color: var(--text);
+    background: rgba(33,212,253,.1);
+    border: 1px solid rgba(33,212,253,.2);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.req-empty {
+    padding: 34px 20px;
+    text-align: center;
+    color: var(--muted);
+}
+
+@media (max-width: 980px) {
+    .req-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="req-header">
+    <div class="req-title">
+        <i class="fas fa-sliders"></i>
+        <div>
+            <h2>Citadel Requirement Setup</h2>
+            <p>Set brand-level requirement months for {{ distributor }}. These rules feed the inventory scorecard.</p>
+        </div>
+    </div>
+    <div class="req-actions">
+        <a class="req-btn secondary" href="{{ url_for('inventory.index') }}">
+            <i class="fas fa-arrow-left"></i> Scorecard
+        </a>
+        <span class="req-pill"><i class="fas fa-clock"></i> {{ last_sync }}</span>
+    </div>
+</div>
+
+{% if error %}
+<div class="flash flash-danger">
+    <i class="fas fa-exclamation-circle"></i> {{ error }}
+</div>
+{% endif %}
+
+<div class="req-grid">
+    <div class="req-card">
+        <div class="req-card-head">
+            <h3><i class="fas fa-pen-to-square"></i> Seed Requirement</h3>
+        </div>
+        <div class="req-card-body">
+            <form method="get" class="req-form-grid" style="margin-bottom:18px;">
+                <div class="req-field">
+                    <label>Anchor Date</label>
+                    <input class="req-control" type="date" name="anchor" value="{{ anchor }}">
+                </div>
+                <button class="req-btn secondary" type="submit">
+                    <i class="fas fa-rotate"></i> Refresh Brands
+                </button>
+            </form>
+
+            <form method="post" class="req-form-grid">
+                <input type="hidden" name="anchor" value="{{ anchor }}">
+                <div class="req-field">
+                    <label>Distributor</label>
+                    <input class="req-control" type="text" value="{{ distributor }}" readonly>
+                </div>
+
+                <div class="req-field">
+                    <label>Brand</label>
+                    <select class="req-control" name="brand" required>
+                        <option value="">Select brand</option>
+                        {% for brand in brand_options %}
+                        <option value="{{ brand.Brand }}">{{ brand.Brand }}{% if brand.AvgDbMonths %} - DB {{ brand.AvgDbMonths }} months{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="req-field">
+                    <label>Requirement Months</label>
+                    <input class="req-control" type="number" name="requirement_months" min="0.5" max="24" step="0.5" placeholder="Example: 6" required>
+                </div>
+
+                <p class="req-note">
+                    Saved months override the database requirement for the selected brand. Leave the scorecard quick override blank to use these seeded rules.
+                </p>
+
+                <div class="req-actions">
+                    <button class="req-btn" type="submit" name="action" value="save">
+                        <i class="fas fa-save"></i> Save Requirement
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="req-card">
+        <div class="req-card-head">
+            <h3><i class="fas fa-table-list"></i> Seeded Brand Requirements</h3>
+            <span class="req-pill"><i class="fas fa-building"></i> {{ settings|length }} rules</span>
+        </div>
+        {% if settings %}
+        <div class="req-table-wrap">
+            <table class="req-table">
+                <thead>
+                    <tr>
+                        <th>Distributor</th>
+                        <th>Brand</th>
+                        <th>Months</th>
+                        <th>Updated</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in settings %}
+                    <tr>
+                        <td>{{ item.Distributor }}</td>
+                        <td>{{ item.Brand }}</td>
+                        <td><span class="req-pill">{{ (item.RequirementMonths or 0)|whole_number }} months</span></td>
+                        <td>{{ item.UpdatedAt or "-" }}</td>
+                        <td>
+                            <form method="post">
+                                <input type="hidden" name="anchor" value="{{ anchor }}">
+                                <input type="hidden" name="brand" value="{{ item.Brand }}">
+                                <button class="req-btn danger" type="submit" name="action" value="delete">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="req-empty">
+            <i class="fas fa-circle-info"></i>
+            No seeded requirement rules yet. The scorecard is using database stock months.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

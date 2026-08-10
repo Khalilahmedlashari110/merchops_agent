@@ -1,0 +1,1244 @@
+{% extends "base.html" %}
+
+{% block title %}UPS Heatmap | Sales Analysis{% endblock %}
+{% block page_title %}UPS Weight Heatmap{% endblock %}
+{% block page_subtitle %}Dynamic USA heatmap weighted by UPS shipment weight, with suggested payment from uploaded raw billing data.{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hm-kpis {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .hm-kpi,
+    .hm-panel {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+    }
+
+    .hm-kpi {
+        padding: 15px;
+        min-height: 78px;
+    }
+
+    .hm-kpi-num {
+        font-size: 25px;
+        line-height: 1;
+        font-weight: 850;
+        color: var(--accent);
+    }
+
+    .hm-kpi-label {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .hm-kpi-note {
+        margin-top: 5px;
+        color: var(--text-2);
+        font-size: 11px;
+        font-weight: 650;
+    }
+
+    .hm-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+    }
+
+    .hm-panel {
+        overflow: hidden;
+    }
+
+    .hm-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--card-border);
+        background: rgba(99,102,241,.035);
+    }
+
+    .hm-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #0f172a;
+        font-size: 13px;
+        font-weight: 850;
+    }
+
+    .hm-title i {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--green);
+        background: rgba(52,211,153,.10);
+        border: 1px solid rgba(52,211,153,.24);
+    }
+
+    .hm-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--card-border);
+        background: rgba(148,163,184,.06);
+        color: var(--text-2);
+        border-radius: 999px;
+        padding: 4px 9px;
+        font-size: 10.5px;
+        font-weight: 750;
+        white-space: nowrap;
+    }
+
+    #upsHeatmap {
+        width: 100%;
+        height: 640px;
+        min-height: 520px;
+    }
+
+    .hm-map-body { padding: 0; }
+
+    .hm-map-shell {
+        position: relative;
+        background:
+            linear-gradient(180deg, rgba(248,250,252,.96), rgba(226,232,240,.92)),
+            radial-gradient(circle at 50% 40%, rgba(59,130,246,.12), rgba(15,23,42,0) 62%);
+    }
+
+    html[data-theme="dark"] .hm-map-shell {
+        background:
+            linear-gradient(180deg, rgba(241,245,249,.98), rgba(203,213,225,.94)),
+            radial-gradient(circle at 50% 40%, rgba(59,130,246,.16), rgba(15,23,42,0) 62%);
+    }
+
+    .hm-map-shell:fullscreen {
+        background: #e2e8f0;
+        padding: 16px;
+    }
+
+    .hm-map-shell:fullscreen #upsHeatmap {
+        height: calc(100vh - 32px);
+        min-height: 0;
+    }
+
+    .hm-map-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .hm-map-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        border: 1px solid rgba(99,102,241,.28);
+        background: rgba(99,102,241,.10);
+        color: var(--accent);
+        border-radius: 7px;
+        padding: 8px 10px;
+        font: 850 11.5px var(--font);
+        cursor: pointer;
+    }
+
+    .hm-map-action:hover {
+        background: rgba(99,102,241,.18);
+        color: #0f172a;
+    }
+
+    .hm-area-info {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        z-index: 5;
+        width: min(360px, calc(100% - 28px));
+        padding: 12px;
+        border: 1px solid rgba(15,23,42,.12);
+        border-radius: 8px;
+        background: rgba(255,255,255,.92);
+        box-shadow: 0 12px 30px rgba(15,23,42,.16);
+        color: #0f172a;
+        backdrop-filter: blur(8px);
+    }
+
+    .hm-area-info-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 13px;
+        font-weight: 900;
+    }
+
+    .hm-area-info-code {
+        border-radius: 999px;
+        padding: 3px 8px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-size: 10px;
+        font-weight: 900;
+    }
+
+    .hm-area-info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 11px;
+    }
+
+    .hm-area-info-metric {
+        padding: 8px;
+        border-radius: 7px;
+        background: rgba(15,23,42,.045);
+        border: 1px solid rgba(15,23,42,.08);
+    }
+
+    .hm-area-info-value {
+        font-size: 13px;
+        font-weight: 900;
+        color: #0f172a;
+        line-height: 1;
+    }
+
+    .hm-area-info-label {
+        margin-top: 5px;
+        color: #64748b;
+        font-size: 9px;
+        font-weight: 850;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+    }
+
+    .hm-area-zips {
+        margin-top: 11px;
+        display: grid;
+        gap: 6px;
+    }
+
+    .hm-area-zips-title {
+        color: #475569;
+        font-size: 9.5px;
+        font-weight: 900;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+    }
+
+    .hm-area-zip-list {
+        display: grid;
+        gap: 5px;
+        max-height: 172px;
+        overflow: auto;
+        padding-right: 2px;
+    }
+
+    .hm-area-zip-row {
+        display: grid;
+        grid-template-columns: 58px 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 7px 8px;
+        border-radius: 7px;
+        background: rgba(15,23,42,.045);
+        border: 1px solid rgba(15,23,42,.08);
+        font-size: 11px;
+    }
+
+    .hm-area-zip-code {
+        color: #1d4ed8;
+        font-weight: 950;
+        font-family: var(--font-mono);
+    }
+
+    .hm-area-zip-meta {
+        color: #334155;
+        font-weight: 800;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .hm-area-zip-pay {
+        color: #047857;
+        font-weight: 950;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .hm-tile-map {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(42px, 1fr));
+        grid-template-rows: repeat(8, 46px);
+        gap: 7px;
+        align-items: stretch;
+    }
+
+    .hm-state-tile {
+        grid-row: var(--r);
+        grid-column: var(--c);
+        border: 1px solid rgba(99,102,241,.20);
+        border-radius: 8px;
+        background:
+            linear-gradient(135deg, rgba(37,99,235,calc(.18 + var(--o) * .62)), rgba(20,184,166,calc(.16 + var(--o) * .50)), rgba(251,191,36,calc(var(--o) * .78))),
+            rgba(248,250,252,.84);
+        color: #0f172a;
+        padding: 7px;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+    }
+
+    .hm-state-tile.empty {
+        background: rgba(248,250,252,.60);
+        border-color: rgba(148,163,184,.20);
+        color: #64748b;
+    }
+
+    .hm-state-code {
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .hm-state-weight {
+        font-size: 10px;
+        color: #334155;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .hm-map-legend {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .hm-map-legend-bar {
+        flex: 1;
+        height: 9px;
+        border-radius: 99px;
+        background: linear-gradient(90deg, rgba(148,163,184,.12), #1d4ed8, #06b6d4, #22c55e, #fbbf24);
+        border: 1px solid rgba(148,163,184,.12);
+    }
+
+    .hm-sales-explorer {
+        margin-top: 14px;
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--card-bg);
+    }
+
+    .hm-sales-toolbar {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        padding: 12px;
+        border-bottom: 1px solid var(--card-border);
+        background: rgba(99,102,241,.035);
+    }
+
+    .hm-sales-input,
+    .hm-sales-select {
+        width: 100%;
+        height: 34px;
+        border: 1px solid var(--card-border);
+        border-radius: 7px;
+        background: var(--input-bg);
+        color: var(--text);
+        padding: 0 10px;
+        font: 750 12px var(--font);
+        outline: none;
+    }
+
+    .hm-sales-summary {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        padding: 12px;
+        border-bottom: 1px solid var(--card-border);
+    }
+
+    .hm-sales-stat {
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 10px;
+        background: rgba(148,163,184,.035);
+    }
+
+    .hm-sales-stat-value {
+        color: var(--accent);
+        font-size: 17px;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .hm-sales-stat-label {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 9.5px;
+        font-weight: 850;
+        letter-spacing: .07em;
+        text-transform: uppercase;
+    }
+
+    .hm-sales-list {
+        display: grid;
+        gap: 8px;
+        max-height: 360px;
+        overflow: auto;
+        padding: 12px;
+    }
+
+    .hm-sales-row {
+        display: grid;
+        grid-template-columns: minmax(165px, 1.2fr) minmax(160px, 1fr) minmax(145px, .8fr) minmax(96px, auto);
+        gap: 12px;
+        align-items: center;
+        padding: 10px 12px;
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        background: rgba(148,163,184,.035);
+    }
+
+    .hm-sales-row.is-missing {
+        border-color: rgba(251,191,36,.28);
+        background: rgba(251,191,36,.06);
+    }
+
+    .hm-sales-key {
+        color: var(--accent);
+        font-weight: 950;
+        overflow-wrap: anywhere;
+    }
+
+    .hm-sales-title {
+        color: var(--text);
+        font-weight: 850;
+        overflow-wrap: anywhere;
+    }
+
+    .hm-sales-meta {
+        color: var(--text-2);
+        font-size: 11px;
+        font-weight: 750;
+    }
+
+    .hm-sales-money {
+        color: var(--green);
+        font-weight: 950;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .hm-sales-empty {
+        padding: 28px 12px;
+        text-align: center;
+        color: var(--muted);
+        font-weight: 750;
+    }
+
+    .hm-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+    }
+
+    .hm-table th {
+        padding: 10px 12px;
+        text-align: left;
+        color: var(--muted);
+        border-bottom: 1px solid var(--card-border);
+        background: rgba(99,102,241,.035);
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .hm-table td {
+        padding: 11px 12px;
+        color: var(--text-2);
+        border-bottom: 1px solid rgba(148,163,184,.10);
+    }
+
+    .hm-table tr:last-child td { border-bottom: 0; }
+    .hm-table tbody tr:hover td { background: rgba(99,102,241,.035); }
+
+    .hm-rank {
+        width: 28px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 7px;
+        background: rgba(99,102,241,.10);
+        color: var(--accent);
+        font-size: 10.5px;
+        font-weight: 850;
+    }
+
+    .hm-empty {
+        padding: 60px 24px;
+        text-align: center;
+        color: var(--muted);
+    }
+
+    .hm-empty i {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 15px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: rgba(99,102,241,.07);
+        border: 1px solid rgba(99,102,241,.14);
+        color: var(--accent);
+        font-size: 24px;
+    }
+
+    .hm-empty-title {
+        color: var(--text-2);
+        font-size: 15px;
+        font-weight: 850;
+        margin-bottom: 7px;
+    }
+
+    .hm-side-stack {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .hm-report {
+        margin-top: 0;
+    }
+
+    .hm-money {
+        color: var(--green);
+        font-weight: 850;
+    }
+
+    .hm-tabs {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 8px;
+    }
+
+    .hm-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--text-2);
+        border-radius: 7px;
+        padding: 8px 12px;
+        font: 850 12px var(--font);
+        cursor: pointer;
+        transition: background .16s, border-color .16s, color .16s;
+    }
+
+    .hm-tab:hover {
+        background: rgba(99,102,241,.08);
+        border-color: rgba(99,102,241,.20);
+        color: var(--text);
+    }
+
+    .hm-tab.active {
+        background: rgba(99,102,241,.12);
+        border-color: rgba(99,102,241,.34);
+        color: var(--accent);
+    }
+
+    .hm-tab-panel { display: none; }
+    .hm-tab-panel.active { display: block; }
+
+    .hm-map-error { display: none; }
+    .hm-map-error.visible { display: block; }
+
+    @media (max-width: 1080px) {
+        .hm-layout { grid-template-columns: 1fr; }
+        .hm-side-stack { grid-template-columns: 1fr; }
+        .hm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .hm-sales-toolbar,
+        .hm-sales-summary,
+        .hm-sales-row { grid-template-columns: 1fr; }
+        .hm-sales-money { text-align: left; }
+        #upsHeatmap {
+            height: 460px;
+            min-height: 420px;
+        }
+        .hm-tile-map {
+            grid-template-columns: repeat(12, minmax(30px, 1fr));
+            grid-template-rows: repeat(8, 40px);
+            gap: 5px;
+        }
+        .hm-state-weight { display: none; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hm-kpis">
+    <div class="hm-kpi">
+        <div class="hm-kpi-num">{{ heatmap_data.total_weight|whole_number }}</div>
+        <div class="hm-kpi-label">Total UPS Weight</div>
+        <div class="hm-kpi-note">Heatmap weight basis</div>
+    </div>
+    <div class="hm-kpi">
+        <div class="hm-kpi-num">${{ heatmap_data.suggested_payment|whole_number }}</div>
+        <div class="hm-kpi-label">Suggested Payment</div>
+        <div class="hm-kpi-note">{{ heatmap_data.raw_charge_rows }} raw, {{ heatmap_data.estimated_charge_rows }} estimated</div>
+    </div>
+    <div class="hm-kpi">
+        <div class="hm-kpi-num">${{ heatmap_data.avg_payment_per_lb|whole_number }}</div>
+        <div class="hm-kpi-label">Avg Payment / LB</div>
+        <div class="hm-kpi-note">Suggested rate</div>
+    </div>
+    <div class="hm-kpi">
+        <div class="hm-kpi-num">{{ heatmap_data.unique_zips|whole_number }}</div>
+        <div class="hm-kpi-label">Unique ZIP Codes</div>
+        <div class="hm-kpi-note">{{ heatmap_data.unique_states }} active states</div>
+    </div>
+    <div class="hm-kpi">
+        <div class="hm-kpi-num">{{ heatmap_data.missing_weight|whole_number }}</div>
+        <div class="hm-kpi-label">Rows Missing Weight</div>
+        <div class="hm-kpi-note">{{ heatmap_data.missing_zip }} missing ZIP</div>
+    </div>
+</div>
+
+<div class="hm-tabs" role="tablist" aria-label="Sales analysis views">
+    <button class="hm-tab active" type="button" data-tab="heatmap" role="tab" aria-selected="true">
+        <i class="fas fa-map-location-dot"></i> Heatmap
+    </button>
+    <button class="hm-tab" type="button" data-tab="payment" role="tab" aria-selected="false">
+        <i class="fas fa-file-invoice-dollar"></i> Suggested Payment
+    </button>
+</div>
+
+<div class="hm-tab-panel active" id="hm-tab-heatmap" role="tabpanel">
+<div class="hm-layout">
+    <section class="hm-panel">
+        <div class="hm-panel-header">
+            <div class="hm-title">
+                <i class="fas fa-map-location-dot"></i>
+                <span>Full USA UPS Weight Heatmap</span>
+            </div>
+            <div class="hm-map-actions">
+                <span class="hm-pill"><i class="fas fa-weight-hanging"></i> Weighted by billable/actual weight</span>
+                <button class="hm-map-action" type="button" id="hmFullscreenBtn">
+                    <i class="fas fa-expand"></i>
+                    Fullscreen
+                </button>
+            </div>
+        </div>
+        {% if heatmap_data.state_codes %}
+        <div class="hm-map-body">
+            <div class="hm-map-shell" id="hmMapShell">
+                <div class="hm-area-info" id="hmAreaInfo">
+                    <div class="hm-area-info-title">
+                        <span id="hmAreaTitle">USA UPS Coverage</span>
+                        <span class="hm-area-info-code" id="hmAreaCode">ALL</span>
+                    </div>
+                    <div class="hm-area-info-grid">
+                        <div class="hm-area-info-metric">
+                            <div class="hm-area-info-value" id="hmAreaWeight">{{ heatmap_data.total_weight|whole_number }}</div>
+                            <div class="hm-area-info-label">Weight</div>
+                        </div>
+                        <div class="hm-area-info-metric">
+                            <div class="hm-area-info-value" id="hmAreaRows">{{ heatmap_data.mapped_rows|whole_number }}</div>
+                            <div class="hm-area-info-label">Rows</div>
+                        </div>
+                        <div class="hm-area-info-metric">
+                            <div class="hm-area-info-value" id="hmAreaPay">${{ heatmap_data.suggested_payment|whole_number }}</div>
+                            <div class="hm-area-info-label">Pay</div>
+                        </div>
+                    </div>
+                    <div class="hm-area-zips">
+                        <div class="hm-area-zips-title" id="hmAreaZipsTitle">Top ZIP codes</div>
+                        <div class="hm-area-zip-list" id="hmAreaZipList"></div>
+                    </div>
+                </div>
+                <div id="upsHeatmap"></div>
+                <div class="hm-empty hm-map-error" id="hmMapError">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <div class="hm-empty-title">Heatmap library did not load</div>
+                    <div>The compact USA tile heatmap below is still active. Plotly was not loaded for the geographic map.</div>
+                </div>
+            </div>
+        </div>
+        <div class="hm-map-body" style="padding: 18px;">
+            <div class="hm-map-legend">
+                <span>Low weight</span>
+                <div class="hm-map-legend-bar"></div>
+                <span>High weight</span>
+            </div>
+            <div class="hm-sales-explorer" aria-label="UPS shipment to sales order explorer">
+                <div class="hm-panel-header">
+                    <div class="hm-title">
+                        <i class="fas fa-link"></i>
+                        <span>UPS Shipments Linked to Sales Orders</span>
+                    </div>
+                    <span class="hm-pill"><i class="fas fa-arrow-pointer"></i> Click a state on the map to filter</span>
+                </div>
+                {% if heatmap_data.sales_match.error %}
+                <div class="hm-empty">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <div class="hm-empty-title">Sales match query could not run</div>
+                    <div>{{ heatmap_data.sales_match.error }}</div>
+                </div>
+                {% else %}
+                <div class="hm-sales-toolbar">
+                    <input class="hm-sales-input" id="hmSalesSearch" placeholder="Search tracking, invoice, order, customer...">
+                    <select class="hm-sales-select" id="hmSalesMonth">
+                        <option value="">All months</option>
+                        {% for month in heatmap_data.sales_match.months %}
+                        <option value="{{ month }}">{{ month }}</option>
+                        {% endfor %}
+                    </select>
+                    <select class="hm-sales-select" id="hmSalesWarehouse">
+                        <option value="">All warehouses</option>
+                        {% for warehouse in heatmap_data.sales_match.warehouses %}
+                        <option value="{{ warehouse }}">{{ warehouse }}</option>
+                        {% endfor %}
+                    </select>
+                    <select class="hm-sales-select" id="hmSalesStatus">
+                        <option value="">All matches</option>
+                        <option value="matched">Matched to sales</option>
+                        <option value="missing">Missing sales match</option>
+                    </select>
+                </div>
+                <div class="hm-sales-summary">
+                    <div class="hm-sales-stat">
+                        <div class="hm-sales-stat-value" id="hmSalesRows">{{ heatmap_data.sales_match.summary.ups_rows|whole_number }}</div>
+                        <div class="hm-sales-stat-label">UPS Rows</div>
+                    </div>
+                    <div class="hm-sales-stat">
+                        <div class="hm-sales-stat-value" id="hmSalesMatched">{{ heatmap_data.sales_match.summary.matched_rows|whole_number }}</div>
+                        <div class="hm-sales-stat-label">Matched</div>
+                    </div>
+                    <div class="hm-sales-stat">
+                        <div class="hm-sales-stat-value" id="hmSalesQty">{{ heatmap_data.sales_match.summary.sold_qty|whole_number }}</div>
+                        <div class="hm-sales-stat-label">Sold Qty</div>
+                    </div>
+                    <div class="hm-sales-stat">
+                        <div class="hm-sales-stat-value" id="hmSalesValue">${{ heatmap_data.sales_match.summary.sales_value|whole_number }}</div>
+                        <div class="hm-sales-stat-label">Sales Value</div>
+                    </div>
+                </div>
+                <div class="hm-sales-list" id="hmSalesList">
+                    <div class="hm-sales-empty"><i class="fas fa-spinner fa-pulse"></i> Loading sales order matches...</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="hm-empty">
+            <i class="fas fa-map"></i>
+            <div class="hm-empty-title">No UPS weight heatmap data yet</div>
+            <div>Upload reviewed UPS raw data first, including ZIP/postal-code and weight columns.</div>
+        </div>
+        {% endif %}
+    </section>
+
+    <div class="hm-side-stack">
+        <section class="hm-panel">
+            <div class="hm-panel-header">
+                <div class="hm-title">
+                    <i class="fas fa-ranking-star"></i>
+                    <span>Top ZIP Codes by Weight</span>
+                </div>
+            </div>
+            {% if heatmap_data.top_zips %}
+            <table class="hm-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>ZIP</th>
+                        <th>State</th>
+                        <th>Weight</th>
+                        <th>Pay</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in heatmap_data.top_zips[:12] %}
+                    <tr>
+                        <td><span class="hm-rank">{{ loop.index }}</span></td>
+                        <td>{{ row.zip }}</td>
+                        <td>{{ row.state_name }}</td>
+                        <td>{{ row.weight|whole_number }}</td>
+                        <td class="hm-money">${{ row.suggested_payment|whole_number }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="hm-empty">
+                <i class="fas fa-location-crosshairs"></i>
+                <div class="hm-empty-title">No ZIP ranking available</div>
+                <div>ZIP-weight ranking will appear after UPS data is uploaded.</div>
+            </div>
+            {% endif %}
+        </section>
+
+        <section class="hm-panel">
+            <div class="hm-panel-header">
+                <div class="hm-title">
+                    <i class="fas fa-file-lines"></i>
+                    <span>Top Source Files</span>
+                </div>
+            </div>
+            {% if heatmap_data.top_sources %}
+            <table class="hm-table">
+                <thead>
+                    <tr>
+                        <th>Source</th>
+                        <th>Weight</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in heatmap_data.top_sources %}
+                    <tr>
+                        <td>{{ row.source_file }}</td>
+                        <td>{{ row.weight|whole_number }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="hm-empty">
+                <i class="fas fa-file-circle-question"></i>
+                <div class="hm-empty-title">No source breakdown</div>
+                <div>Source-file contribution will appear after data is uploaded.</div>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+</div>
+
+<div class="hm-tab-panel" id="hm-tab-payment" role="tabpanel">
+<section class="hm-panel hm-report">
+    <div class="hm-panel-header">
+        <div class="hm-title">
+            <i class="fas fa-file-invoice-dollar"></i>
+            <span>Suggested UPS Payment Report</span>
+        </div>
+        <span class="hm-pill"><i class="fas fa-circle-info"></i> Actual payment can be compared next</span>
+    </div>
+    {% if heatmap_data.state_rows %}
+    <table class="hm-table">
+        <thead>
+            <tr>
+                <th>State</th>
+                <th>UPS Rows</th>
+                <th>Total Weight</th>
+                <th>Suggested Payment</th>
+                <th>Payment / LB</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in heatmap_data.state_rows %}
+            <tr>
+                <td>{{ row.state_name }}</td>
+                <td>{{ row.shipments }}</td>
+                <td>{{ row.weight|whole_number }}</td>
+                <td class="hm-money">${{ row.suggested_payment|whole_number }}</td>
+                <td>${{ row.payment_per_lb|whole_number }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="hm-empty">
+        <i class="fas fa-file-invoice"></i>
+        <div class="hm-empty-title">No payment report available</div>
+                <div>Upload reviewed UPS data with ZIP and weight columns to create the suggested payment report.</div>
+    </div>
+    {% endif %}
+</section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    function resizeHeatmap() {
+        var map = document.getElementById('upsHeatmap');
+        if (map && window.Plotly) {
+            Plotly.Plots.resize(map);
+        }
+    }
+
+    document.querySelectorAll('.hm-tab').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            var target = tab.getAttribute('data-tab');
+            document.querySelectorAll('.hm-tab').forEach(function (item) {
+                item.classList.toggle('active', item === tab);
+                item.setAttribute('aria-selected', item === tab ? 'true' : 'false');
+            });
+            document.querySelectorAll('.hm-tab-panel').forEach(function (panel) {
+                panel.classList.toggle('active', panel.id === 'hm-tab-' + target);
+            });
+            if (target === 'heatmap' && window.Plotly) {
+                setTimeout(resizeHeatmap, 80);
+            }
+        });
+    });
+
+    var fullscreenBtn = document.getElementById('hmFullscreenBtn');
+    var mapShell = document.getElementById('hmMapShell');
+    if (fullscreenBtn && mapShell) {
+        fullscreenBtn.addEventListener('click', function () {
+            if (!document.fullscreenElement) {
+                mapShell.requestFullscreen().then(resizeHeatmap).catch(function () {});
+            } else {
+                document.exitFullscreen().then(resizeHeatmap).catch(function () {});
+            }
+        });
+        document.addEventListener('fullscreenchange', function () {
+            fullscreenBtn.innerHTML = document.fullscreenElement
+                ? '<i class="fas fa-compress"></i> Exit Fullscreen'
+                : '<i class="fas fa-expand"></i> Fullscreen';
+            setTimeout(resizeHeatmap, 120);
+        });
+    }
+}());
+</script>
+<script>
+(function () {
+    var rows = [];
+    var selectedState = '';
+    var list = document.getElementById('hmSalesList');
+    var search = document.getElementById('hmSalesSearch');
+    var month = document.getElementById('hmSalesMonth');
+    var warehouse = document.getElementById('hmSalesWarehouse');
+    var status = document.getElementById('hmSalesStatus');
+    var rowsCount = document.getElementById('hmSalesRows');
+    var matchedCount = document.getElementById('hmSalesMatched');
+    var qtyTotal = document.getElementById('hmSalesQty');
+    var valueTotal = document.getElementById('hmSalesValue');
+
+    function wholeNumber(value) {
+        return Math.round(Number(value || 0)).toLocaleString();
+    }
+
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, function (char) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char];
+        });
+    }
+
+    function fillSelect(select, values, label) {
+        if (!select) return;
+        select.innerHTML = '<option value="">' + label + '</option>' + (values || []).map(function (value) {
+            return '<option value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</option>';
+        }).join('');
+    }
+
+    function rowMatches(row) {
+        var q = (search && search.value || '').toLowerCase().trim();
+        var statusValue = status && status.value || '';
+        if (selectedState && row.state !== selectedState) return false;
+        if (month && month.value && row.month_year !== month.value) return false;
+        if (warehouse && warehouse.value && row.warehouse !== warehouse.value) return false;
+        if (statusValue === 'matched' && !row.matched) return false;
+        if (statusValue === 'missing' && row.matched) return false;
+        if (q) {
+            var haystack = [
+                row.tracking_number, row.invoice_number, row.recipient_name, row.order_no,
+                row.matched_order_no, row.customer, row.style, row.colour, row.size,
+                row.zip_code, row.state, row.warehouse
+            ].join(' ').toLowerCase();
+            if (!haystack.includes(q)) return false;
+        }
+        return true;
+    }
+
+    function render() {
+        if (!list) return;
+        var filtered = rows.filter(rowMatches);
+        var matched = filtered.filter(function (row) { return row.matched; });
+        var soldQty = matched.reduce(function (sum, row) { return sum + Number(row.sold_qty || 0); }, 0);
+        var salesValue = matched.reduce(function (sum, row) { return sum + Number(row.total_value || 0); }, 0);
+        if (rowsCount) rowsCount.textContent = wholeNumber(filtered.length);
+        if (matchedCount) matchedCount.textContent = wholeNumber(matched.length);
+        if (qtyTotal) qtyTotal.textContent = wholeNumber(soldQty);
+        if (valueTotal) valueTotal.textContent = '$' + wholeNumber(salesValue);
+
+        if (!filtered.length) {
+            list.innerHTML = '<div class="hm-sales-empty">No UPS and sales rows match the selected filters.</div>';
+            return;
+        }
+
+        list.innerHTML = filtered.slice(0, 120).map(function (row) {
+            var title = row.matched
+                ? [row.order_no, row.style, row.colour, row.size].filter(Boolean).join(' | ')
+                : 'No sales order found for ' + (row.matched_order_no || row.invoice_number || 'invoice');
+            return '<div class="hm-sales-row ' + (row.matched ? '' : 'is-missing') + '">'
+                + '<div>'
+                + '<div class="hm-sales-key">' + escapeHtml(row.tracking_number || 'Missing Tracking') + '</div>'
+                + '<div class="hm-sales-meta">' + escapeHtml(row.invoice_number || '-') + ' | ' + escapeHtml(row.recipient_name || '-') + '</div>'
+                + '</div>'
+                + '<div>'
+                + '<div class="hm-sales-title">' + escapeHtml(title) + '</div>'
+                + '<div class="hm-sales-meta">' + escapeHtml(row.customer || 'No customer') + ' | ' + escapeHtml(row.month_year || 'No month') + '</div>'
+                + '</div>'
+                + '<div>'
+                + '<div class="hm-sales-title">' + escapeHtml(row.warehouse || '-') + ' | ' + escapeHtml(row.state_name || '-') + '</div>'
+                + '<div class="hm-sales-meta">ZIP ' + escapeHtml(row.zip_code || '-') + ' | ' + wholeNumber(row.weight) + ' lb | Qty ' + wholeNumber(row.sold_qty) + '</div>'
+                + '</div>'
+                + '<div class="hm-sales-money">$' + wholeNumber(row.total_value) + '</div>'
+                + '</div>';
+        }).join('');
+    }
+
+    [search, month, warehouse, status].forEach(function (control) {
+        if (control) control.addEventListener('input', render);
+        if (control) control.addEventListener('change', render);
+    });
+
+    window.hmSetSalesState = function (stateCode) {
+        selectedState = stateCode || '';
+        render();
+    };
+
+    async function loadRows() {
+        if (!list) return;
+        try {
+            var response = await fetch('/sales-analysis/heatmap/sales-match', {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!response.ok) throw new Error('Sales match request failed (' + response.status + ')');
+            var data = await response.json();
+            if (data.error) throw new Error(data.error);
+            rows = data.rows || [];
+            fillSelect(month, data.months || [], 'All months');
+            fillSelect(warehouse, data.warehouses || [], 'All warehouses');
+            render();
+        } catch (err) {
+            list.innerHTML = '<div class="hm-sales-empty">Sales match data could not be loaded: ' + escapeHtml(err.message || 'Unknown error') + '</div>';
+        }
+    }
+
+    loadRows();
+}());
+</script>
+{% if heatmap_data.state_codes %}
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>
+(function () {
+    if (!window.Plotly) {
+        var mapError = document.getElementById('hmMapError');
+        var mapEl = document.getElementById('upsHeatmap');
+        if (mapEl) mapEl.style.display = 'none';
+        if (mapError) mapError.classList.add('visible');
+        return;
+    }
+
+    var states = {{ heatmap_data.state_codes | tojson }};
+    var values = {{ heatmap_data.state_values | tojson }};
+    var labels = {{ heatmap_data.state_labels | tojson }};
+    var shipments = {{ heatmap_data.state_shipments | tojson }};
+    var payments = {{ heatmap_data.state_payments | tojson }};
+    var stateZipDetails = {{ heatmap_data.state_zip_details | tojson }};
+    var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    var stateCenters = {
+        AL: [-86.8, 32.8], AK: [-152.0, 64.2], AZ: [-111.7, 34.2], AR: [-92.4, 34.9],
+        CA: [-119.5, 37.2], CO: [-105.6, 39.0], CT: [-72.7, 41.6], DE: [-75.5, 39.0],
+        FL: [-82.5, 28.2], GA: [-83.4, 32.7], HI: [-157.5, 20.8], ID: [-114.6, 44.2],
+        IL: [-89.3, 40.0], IN: [-86.1, 39.9], IA: [-93.5, 42.1], KS: [-98.3, 38.5],
+        KY: [-84.8, 37.8], LA: [-91.9, 30.9], ME: [-69.0, 45.2], MD: [-76.7, 39.0],
+        MA: [-71.8, 42.2], MI: [-84.6, 44.3], MN: [-94.6, 46.3], MS: [-89.7, 32.7],
+        MO: [-92.6, 38.4], MT: [-110.4, 46.9], NE: [-99.9, 41.5], NV: [-116.6, 39.3],
+        NH: [-71.6, 43.7], NJ: [-74.5, 40.1], NM: [-106.1, 34.4], NY: [-75.0, 43.0],
+        NC: [-79.4, 35.5], ND: [-100.5, 47.5], OH: [-82.8, 40.3], OK: [-97.5, 35.6],
+        OR: [-120.5, 44.0], PA: [-77.8, 40.9], RI: [-71.6, 41.7], SC: [-80.9, 33.9],
+        SD: [-100.0, 44.4], TN: [-86.4, 35.8], TX: [-99.3, 31.4], UT: [-111.7, 39.3],
+        VT: [-72.7, 44.0], VA: [-78.7, 37.6], WA: [-120.7, 47.4], WV: [-80.6, 38.6],
+        WI: [-89.7, 44.6], WY: [-107.6, 43.0], DC: [-77.0, 38.9]
+    };
+
+    function wholeNumber(value) {
+        return Math.round(Number(value || 0)).toLocaleString();
+    }
+
+    function setAreaInfo(index) {
+        var title = document.getElementById('hmAreaTitle');
+        var code = document.getElementById('hmAreaCode');
+        var weight = document.getElementById('hmAreaWeight');
+        var rows = document.getElementById('hmAreaRows');
+        var pay = document.getElementById('hmAreaPay');
+        var zipTitle = document.getElementById('hmAreaZipsTitle');
+        var zipList = document.getElementById('hmAreaZipList');
+
+        function renderZipRows(zipRows) {
+            if (!zipList) return;
+            if (!zipRows || !zipRows.length) {
+                zipList.innerHTML = '<div class="hm-area-zip-row"><span class="hm-area-zip-code">--</span><span class="hm-area-zip-meta">No ZIP detail available</span><span class="hm-area-zip-pay">$0</span></div>';
+                return;
+            }
+            zipList.innerHTML = zipRows.map(function (row) {
+                return '<div class="hm-area-zip-row">'
+                    + '<span class="hm-area-zip-code">' + row.zip + '</span>'
+                    + '<span class="hm-area-zip-meta">' + wholeNumber(row.shipments) + ' rows | ' + wholeNumber(row.weight) + ' lb</span>'
+                    + '<span class="hm-area-zip-pay">$' + wholeNumber(row.suggested_payment) + '</span>'
+                    + '</div>';
+            }).join('');
+        }
+
+        if (index === null || index === undefined || index < 0) {
+            if (title) title.textContent = 'USA UPS Coverage';
+            if (code) code.textContent = 'ALL';
+            if (weight) weight.textContent = wholeNumber(values.reduce(function (sum, item) { return sum + Number(item || 0); }, 0));
+            if (rows) rows.textContent = wholeNumber(shipments.reduce(function (sum, item) { return sum + Number(item || 0); }, 0));
+            if (pay) pay.textContent = '$' + wholeNumber(payments.reduce(function (sum, item) { return sum + Number(item || 0); }, 0));
+            if (zipTitle) zipTitle.textContent = 'Top ZIP codes in current data';
+            renderZipRows(Object.keys(stateZipDetails).reduce(function (allRows, state) {
+                return allRows.concat(stateZipDetails[state] || []);
+            }, []).sort(function (a, b) {
+                return Number(b.weight || 0) - Number(a.weight || 0);
+            }).slice(0, 8));
+            return;
+        }
+        if (title) title.textContent = labels[index] || states[index];
+        if (code) code.textContent = states[index] || '--';
+        if (weight) weight.textContent = wholeNumber(values[index]);
+        if (rows) rows.textContent = wholeNumber(shipments[index]);
+        if (pay) pay.textContent = '$' + wholeNumber(payments[index]);
+        if (zipTitle) zipTitle.textContent = 'Top ZIP codes in ' + (labels[index] || states[index]);
+        renderZipRows(stateZipDetails[states[index]] || []);
+    }
+
+    var trace = {
+        type: 'choropleth',
+        locationmode: 'USA-states',
+        locations: states,
+        z: values,
+        text: labels,
+        customdata: states.map(function (state, i) {
+            return [shipments[i], payments[i], state];
+        }),
+        colorscale: [
+            [0, '#dbeafe'],
+            [0.18, '#93c5fd'],
+            [0.42, '#22d3ee'],
+            [0.68, '#22c55e'],
+            [1, '#f59e0b']
+        ],
+        marker: {
+            line: { color: '#ffffff', width: 1.4 }
+        },
+        colorbar: {
+            title: {
+                text: '<b>Weight</b>',
+                side: 'right',
+                font: { color: '#0f172a', size: 13, family: 'Inter, Arial, sans-serif' }
+            },
+            thickness: 16,
+            len: .72,
+            outlinecolor: '#64748b',
+            outlinewidth: 1,
+            tickfont: { color: '#0f172a', size: 12, family: 'Inter, Arial, sans-serif' },
+            tickformat: ',.0f',
+            bgcolor: 'rgba(255,255,255,.78)'
+        },
+        hoverlabel: {
+            bgcolor: '#ffffff',
+            bordercolor: '#cbd5e1',
+            font: { color: '#0f172a' }
+        },
+        hovertemplate: '<b>%{text} (%{customdata[2]})</b><br>Total weight: %{z:,.0f}<br>UPS rows: %{customdata[0]:,.0f}<br>Suggested payment: $%{customdata[1]:,.0f}<extra></extra>'
+    };
+
+    var labelTrace = {
+        type: 'scattergeo',
+        mode: 'text',
+        lon: states.map(function (state) { return stateCenters[state] ? stateCenters[state][0] : null; }),
+        lat: states.map(function (state) { return stateCenters[state] ? stateCenters[state][1] : null; }),
+        text: states,
+        textfont: {
+            color: '#0f172a',
+            size: 10,
+            family: 'Inter, Arial, sans-serif'
+        },
+        hoverinfo: 'skip',
+        showlegend: false
+    };
+
+    var layout = {
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        geo: {
+            scope: 'usa',
+            projection: { type: 'albers usa' },
+            showland: true,
+            showlakes: true,
+            showsubunits: true,
+            showcountries: false,
+            showframe: false,
+            fitbounds: 'locations',
+            landcolor: '#f8fafc',
+            bgcolor: 'rgba(0,0,0,0)',
+            lakecolor: '#bfdbfe',
+            subunitcolor: '#ffffff',
+            countrycolor: '#ffffff'
+        },
+        font: { color: '#0f172a', family: 'Inter, Arial, sans-serif' }
+    };
+
+    Plotly.newPlot('upsHeatmap', [trace, labelTrace], layout, {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ['lasso2d', 'select2d']
+    }).then(function (mapDiv) {
+        setAreaInfo(null);
+        mapDiv.on('plotly_click', function (eventData) {
+            if (!eventData || !eventData.points || eventData.points[0].curveNumber !== 0) return;
+            setAreaInfo(eventData.points[0].pointIndex);
+            if (window.hmSetSalesState) {
+                window.hmSetSalesState(states[eventData.points[0].pointIndex]);
+            }
+        });
+        mapDiv.on('plotly_doubleclick', function () {
+            setAreaInfo(null);
+            if (window.hmSetSalesState) {
+                window.hmSetSalesState('');
+            }
+        });
+    });
+}());
+</script>
+{% endif %}
+{% endblock %}

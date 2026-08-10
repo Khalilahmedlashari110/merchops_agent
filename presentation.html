@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MerchOps Agent — Animated Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b1020;--bg2:#0f1629;--card:#111827;--card2:#151e30;
+  --border:#1e2a40;--text:#e2e8f0;--text2:#94a3b8;--muted:#475569;
+  --accent:#6366f1;--p2:#8b5cf6;--b1:#3b82f6;--b2:#60a5fa;
+  --g1:#34d399;--a1:#fbbf24;--r1:#f87171;--c1:#22d3ee;
+  --crit:#ff5a7a;--high:#ffc23d;--med:#21d4fd;--res:#1fd18a;
+  --font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:var(--font);}
+
+/* ═══════════════════════════════════════════════════════════════
+   PRESENTATION SHELL
+═══════════════════════════════════════════════════════════════ */
+#pres{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;flex-direction:column;
+}
+
+/* Progress bar */
+#prog-wrap{height:3px;background:#1e2a40;flex-shrink:0;position:relative;z-index:10;}
+#prog-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--c1));width:0%;transition:width .3s linear;}
+
+/* Slide container */
+#slides{flex:1;position:relative;overflow:hidden;}
+.slide{
+  position:absolute;inset:0;padding:32px 40px 20px;
+  opacity:0;pointer-events:none;
+  transition:opacity .5s ease, transform .5s ease;
+  transform:translateX(40px);
+  display:flex;flex-direction:column;gap:18px;
+}
+.slide.active{opacity:1;pointer-events:all;transform:translateX(0);}
+.slide.exit{opacity:0;transform:translateX(-40px);}
+
+/* Controls */
+#ctrl{
+  display:flex;align-items:center;justify-content:center;
+  gap:12px;padding:10px 20px;flex-shrink:0;
+  background:#080d18;border-top:1px solid var(--border);
+  position:relative;z-index:10;
+}
+.c-btn{
+  padding:7px 18px;border-radius:8px;border:1px solid var(--border);
+  background:var(--card);color:var(--text2);cursor:pointer;font-size:12px;
+  font-family:var(--font);transition:all .15s;display:flex;align-items:center;gap:6px;
+}
+.c-btn:hover{border-color:var(--accent);color:var(--text);}
+.c-btn.primary{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4);color:var(--accent);}
+#slide-counter{font-size:11px;color:var(--muted);font-family:var(--mono);min-width:60px;text-align:center;}
+#timer-ring{width:28px;height:28px;position:relative;}
+#timer-ring svg{transform:rotate(-90deg);}
+#timer-ring circle{transition:stroke-dashoffset .9s linear;}
+
+/* ═══════════════════════════════════════════════════════════════
+   SHARED COMPONENTS
+═══════════════════════════════════════════════════════════════ */
+.slide-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:-6px;}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.page-h1{font-size:20px;font-weight:800;color:var(--text);letter-spacing:-.03em;}
+.page-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+
+/* Pill / badge */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap;}
+.pill-v{background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.28);color:var(--accent);}
+.pill-g{background:rgba(52,211,153,.10);border:1px solid rgba(52,211,153,.24);color:var(--g1);}
+.pill-a{background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.24);color:var(--a1);}
+.pill-r{background:rgba(248,113,113,.10);border:1px solid rgba(248,113,113,.24);color:var(--r1);}
+.pill-b{background:rgba(96,165,250,.10);border:1px solid rgba(96,165,250,.24);color:var(--b2);}
+.pill-c{background:rgba(34,211,238,.10);border:1px solid rgba(34,211,238,.24);color:var(--c1);}
+.pill-crit{background:rgba(255,90,122,.18);border:1px solid rgba(255,90,122,.3);color:#ff7b9a;}
+.pill-res{background:rgba(31,209,138,.12);border:1px solid rgba(31,209,138,.28);color:var(--res);}
+
+/* Card */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;}
+.card-sm{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
+
+/* Stat card */
+.stats-row{display:grid;gap:12px;}
+.s4{grid-template-columns:repeat(4,1fr);}
+.s3{grid-template-columns:repeat(3,1fr);}
+.s6{grid-template-columns:repeat(6,1fr);}
+.stat-card{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;display:flex;align-items:center;gap:12px;
+  position:relative;overflow:hidden;
+}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:12px 12px 0 0;}
+.sc-v::before{background:linear-gradient(90deg,var(--accent),var(--b1));}
+.sc-g::before{background:linear-gradient(90deg,var(--g1),var(--c1));}
+.sc-b::before{background:linear-gradient(90deg,var(--b1),var(--p2));}
+.sc-a::before{background:linear-gradient(90deg,var(--a1),#fb923c);}
+.sc-r::before{background:linear-gradient(90deg,var(--r1),var(--crit));}
+.sc-c::before{background:linear-gradient(90deg,var(--c1),var(--b2));}
+.stat-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.si-v{background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.22);color:var(--accent);}
+.si-g{background:rgba(52,211,153,.10);border:1px solid rgba(52,211,153,.22);color:var(--g1);}
+.si-b{background:rgba(59,130,246,.10);border:1px solid rgba(59,130,246,.22);color:var(--b2);}
+.si-a{background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.22);color:var(--a1);}
+.si-r{background:rgba(248,113,113,.10);border:1px solid rgba(248,113,113,.22);color:var(--r1);}
+.si-c{background:rgba(34,211,238,.10);border:1px solid rgba(34,211,238,.22);color:var(--c1);}
+.stat-num{font-size:22px;font-weight:800;line-height:1;letter-spacing:-.04em;}
+.stat-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:3px;}
+
+/* Table */
+.tbl-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.tbl-hd{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(99,102,241,.04) 0%,transparent 100%);}
+.tbl-title{font-size:12.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;}
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{padding:9px 12px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);}
+.tbl td{padding:9px 12px;font-size:12px;color:var(--text);border-bottom:1px solid rgba(255,255,255,.04);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:rgba(99,102,241,.04);}
+
+/* Avatar */
+.av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;font-family:var(--mono);}
+.av-v{background:linear-gradient(135deg,rgba(99,102,241,.3),rgba(96,165,250,.2));border:1px solid rgba(99,102,241,.4);color:var(--accent);}
+.av-g{background:linear-gradient(135deg,rgba(52,211,153,.3),rgba(34,211,238,.15));border:1px solid rgba(52,211,153,.4);color:var(--g1);}
+.av-a{background:linear-gradient(135deg,rgba(251,191,36,.28),rgba(251,146,60,.15));border:1px solid rgba(251,191,36,.38);color:var(--a1);}
+
+/* Animated pulse dot */
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--g1);box-shadow:0 0 6px var(--g1);animation:pul 2s ease-in-out infinite;}
+.pulse-dot.amber{background:var(--a1);box-shadow:0 0 6px var(--a1);}
+.pulse-dot.cyan{background:var(--c1);box-shadow:0 0 6px var(--c1);}
+@keyframes pul{0%,100%{opacity:.5}50%{opacity:1}}
+
+/* Spotlight callout */
+.callout{
+  background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.3);
+  border-radius:8px;padding:6px 12px;font-size:10.5px;color:var(--accent);
+  display:inline-flex;align-items:center;gap:6px;
+  animation:callIn .4s ease forwards;
+}
+.callout.green{background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.3);color:var(--g1);}
+.callout.amber{background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.3);color:var(--a1);}
+.callout.cyan{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.3);color:var(--c1);}
+@keyframes callIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* Feature highlight tag */
+.feat-tag{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 12px;border-radius:999px;font-size:10.5px;font-weight:600;
+  border:1px solid var(--border);color:var(--text2);background:var(--card2);
+}
+
+/* Progress bar for coverage */
+.cov-bar{height:5px;border-radius:3px;background:#1e2a40;overflow:hidden;}
+.cov-fill{height:100%;border-radius:3px;transition:width 1.2s ease;}
+.cov-r{background:var(--crit);}
+.cov-a{background:var(--a1);}
+.cov-g{background:var(--g1);}
+
+/* Email card */
+.email-card{
+  display:flex;align-items:flex-start;gap:12px;padding:13px 16px;
+  border-bottom:1px solid rgba(99,102,241,.05);
+  transition:background .14s;cursor:pointer;
+}
+.email-card:hover{background:rgba(99,102,241,.04);}
+.email-body{flex:1;min-width:0;}
+.email-subject{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.email-from{font-size:11px;color:var(--muted);margin-top:2px;}
+.email-preview{font-size:11px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.email-time{font-size:10px;color:var(--muted);font-family:var(--mono);flex-shrink:0;}
+
+/* Sidebar mockup */
+.sidebar-mock{
+  width:200px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;gap:0;overflow:hidden;border-radius:12px 0 0 12px;
+}
+.sb-brand{padding:16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);}
+.sb-logo{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--p2));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;}
+.sb-name{font-size:11px;font-weight:700;color:var(--text);line-height:1.3;}
+.sb-sub{font-size:9px;color:var(--muted);}
+.nav-group-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:10px 14px 4px;font-weight:700;}
+.nav-item{padding:7px 14px;font-size:11.5px;color:var(--text2);display:flex;align-items:center;gap:8px;cursor:pointer;transition:all .15s;border-left:2px solid transparent;}
+.nav-item:hover,.nav-item.active{background:rgba(99,102,241,.08);color:var(--text);border-left-color:var(--accent);}
+.nav-item.active{color:var(--accent);font-weight:600;}
+
+/* ── KEYFRAMES ────────────────────────────────────────────── */
+@keyframes floatUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scanLine{0%{top:0}100%{top:100%}}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+@keyframes glow{0%,100%{box-shadow:0 0 0 rgba(99,102,241,0)}50%{box-shadow:0 0 20px rgba(99,102,241,.3)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes countUp{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+
+/* Delay helpers */
+.d1{animation-delay:.1s}.d2{animation-delay:.2s}.d3{animation-delay:.3s}.d4{animation-delay:.4s}.d5{animation-delay:.5s}
+.d6{animation-delay:.6s}.d7{animation-delay:.7s}.d8{animation-delay:.8s}
+.anim{animation:floatUp .45s ease forwards;opacity:0;}
+
+/* ══ TOPBAR MOCK ══════════════════════════════════════════ */
+.topbar-mock{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border);
+  border-radius:0 12px 0 0;
+}
+.topbar-h1{font-size:14px;font-weight:800;color:var(--text);}
+.topbar-sub{font-size:10px;color:var(--muted);}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+
+</style>
+</head>
+<body>
+
+<div id="pres">
+
+  <!-- Progress bar -->
+  <div id="prog-wrap"><div id="prog-bar"></div></div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SLIDES
+  ═══════════════════════════════════════════════════════ -->
+  <div id="slides">
+
+    <!-- ─── SLIDE 1 · INTRO ──────────────────────────────── -->
+    <div class="slide active" id="s1" data-dur="7000">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;text-align:center;">
+
+        <!-- Animated brain logo -->
+        <div class="anim" style="position:relative;width:120px;height:120px;">
+          <svg width="120" height="120" viewBox="0 0 220 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="110" cy="96" r="44" fill="rgba(99,102,241,.06)" stroke="rgba(99,102,241,.18)" stroke-width="1"/>
+            <circle cx="110" cy="96" r="5.5" fill="#9690e8"><animate attributeName="opacity" values=".96;.38;.96" dur="2.2s" repeatCount="indefinite"/></circle>
+            <g stroke="#7F77DD" stroke-width="1" opacity=".5">
+              <line x1="110" y1="96" x2="110" y2="62"/><line x1="110" y1="96" x2="138" y2="76"/>
+              <line x1="110" y1="96" x2="138" y2="116"/><line x1="110" y1="96" x2="110" y2="130"/>
+              <line x1="110" y1="96" x2="82" y2="116"/><line x1="110" y1="96" x2="82" y2="76"/>
+            </g>
+            <circle cx="110" cy="62" r="4" fill="#7F77DD" opacity=".9"/>
+            <circle cx="138" cy="76" r="4" fill="#7F77DD" opacity=".8"/>
+            <circle cx="138" cy="116" r="4" fill="#7F77DD" opacity=".8"/>
+            <circle cx="110" cy="130" r="4" fill="#7F77DD" opacity=".9"/>
+            <circle cx="82" cy="116" r="4" fill="#7F77DD" opacity=".8"/>
+            <circle cx="82" cy="76" r="4" fill="#7F77DD" opacity=".8"/>
+            <circle cx="110" cy="96" r="22" stroke="#7F77DD" stroke-width="1" fill="none" opacity=".15">
+              <animate attributeName="r" values="22;38;22" dur="3.4s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values=".15;0;.15" dur="3.4s" repeatCount="indefinite"/>
+            </circle>
+          </svg>
+        </div>
+
+        <div class="anim d1">
+          <div style="font-size:48px;font-weight:900;letter-spacing:-.04em;background:linear-gradient(135deg,#6366f1,#22d3ee,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">MerchOps Agent</div>
+          <div style="font-size:16px;color:var(--muted);margin-top:8px;letter-spacing:.08em;text-transform:uppercase;">AI · Vision · Operations Intelligence</div>
+        </div>
+
+        <div class="anim d2" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+          <span class="pill pill-v">⚡ Claude Opus 4.7</span>
+          <span class="pill pill-c">👁 Face Auth</span>
+          <span class="pill pill-g">📦 Inventory AI</span>
+          <span class="pill pill-b">📧 Email Agent</span>
+          <span class="pill pill-a">🔔 Live Alerts</span>
+        </div>
+
+        <div class="anim d3" style="max-width:560px;font-size:13.5px;color:var(--text2);line-height:1.7;">
+          An enterprise-grade AI email automation platform that reads, classifies, and replies to inventory enquiries — with real-time stock alerts, biometric login, and multi-tenant management.
+        </div>
+
+        <div class="anim d4" style="display:flex;gap:16px;font-size:11px;color:var(--muted);">
+          <span>🖥 12 Screens</span>
+          <span>·</span>
+          <span>🤖 AI-Powered</span>
+          <span>·</span>
+          <span>🗄 SQL Server</span>
+          <span>·</span>
+          <span>🔐 Multi-Tenant</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 2 · LOGIN ──────────────────────────────── -->
+    <div class="slide" id="s2" data-dur="8000">
+      <div class="slide-title">Screen 1 of 11</div>
+      <div class="page-header">
+        <div><div class="page-h1">Login</div><div class="page-sub">Dual-mode authentication — Face Recognition + Password</div></div>
+        <div style="display:flex;gap:8px;">
+          <span class="callout cyan">👁 Biometric Login</span>
+          <span class="callout">🔐 Password Auth</span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1;">
+
+        <!-- Face login card -->
+        <div class="card" style="display:flex;flex-direction:column;gap:12px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;">
+            <span style="width:28px;height:28px;border-radius:7px;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.22);display:flex;align-items:center;justify-content:center;font-size:13px;">👁</span>
+            Face Recognition Login
+          </div>
+          <!-- Camera feed -->
+          <div style="background:linear-gradient(180deg,rgba(14,30,58,.95),rgba(9,20,38,.98));border-radius:10px;aspect-ratio:4/3;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+            <!-- Scan line -->
+            <div style="position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(34,211,238,.6),transparent);animation:scanLine 2.4s linear infinite;top:0;"></div>
+            <!-- Face outline -->
+            <div style="width:90px;height:110px;border:2px solid rgba(34,211,238,.5);border-radius:50%;position:relative;">
+              <div style="position:absolute;inset:-8px;border:1px dashed rgba(34,211,238,.2);border-radius:50%;animation:spin 6s linear infinite;"></div>
+              <div style="width:22px;height:22px;border-radius:50%;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.4);position:absolute;top:20px;left:14px;"></div>
+              <div style="width:22px;height:22px;border-radius:50%;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.4);position:absolute;top:20px;right:14px;"></div>
+              <div style="width:28px;height:12px;border-radius:0 0 14px 14px;border:1px solid rgba(34,211,238,.4);position:absolute;bottom:22px;left:50%;transform:translateX(-50%);"></div>
+            </div>
+            <div style="position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:10px;color:rgba(34,211,238,.7);font-family:var(--mono);">SCANNING · FACE DETECTED</div>
+          </div>
+          <!-- Status box -->
+          <div style="background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.2);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+            <span class="pulse-dot"></span>
+            <div>
+              <div style="font-size:11px;font-weight:600;color:var(--g1);">Face Verified — 94.7% confidence</div>
+              <div style="font-size:10px;color:var(--muted);">Match streak: ●●●</div>
+            </div>
+          </div>
+          <!-- Feature tags -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <span class="feat-tag">🔒 Encrypted encodings</span>
+            <span class="feat-tag">📸 Live camera feed</span>
+            <span class="feat-tag">✅ Confidence scoring</span>
+          </div>
+        </div>
+
+        <!-- Password login card -->
+        <div class="card" style="display:flex;flex-direction:column;gap:14px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;">
+            <span style="width:28px;height:28px;border-radius:7px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.22);display:flex;align-items:center;justify-content:center;font-size:13px;">🔑</span>
+            Password Login
+          </div>
+          <div>
+            <div style="font-size:10.5px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;">Username</div>
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--text2);font-family:var(--mono);">admin@staton.corp</div>
+          </div>
+          <div>
+            <div style="font-size:10.5px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;">Password</div>
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--text2);">••••••••••</div>
+          </div>
+          <div style="background:linear-gradient(135deg,var(--accent),var(--p2));border-radius:9px;padding:11px;text-align:center;font-size:13px;font-weight:700;color:#fff;margin-top:4px;">Sign In</div>
+          <!-- Security badges -->
+          <div style="display:flex;gap:6px;justify-content:center;margin-top:auto;">
+            <span class="pill pill-v">🔒 Encrypted</span>
+            <span class="pill pill-c">🗄 SQL Ready</span>
+            <span class="pill pill-b">🤖 AI Protected</span>
+          </div>
+          <!-- Roles note -->
+          <div style="background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.15);border-radius:8px;padding:8px 10px;font-size:10.5px;color:var(--a1);">
+            🔑 Roles: <strong>super_admin</strong> · <strong>org_admin</strong> · <strong>user</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 3 · DASHBOARD ──────────────────────────── -->
+    <div class="slide" id="s3" data-dur="9000">
+      <div class="slide-title">Screen 2 of 11</div>
+      <div class="page-header">
+        <div><div class="page-h1">Dashboard</div><div class="page-sub">Command center — Live KPIs, Email AI status, Inventory Intelligence</div></div>
+        <span class="callout cyan">📡 Live Polling Every 5 Min</span>
+      </div>
+
+      <!-- Live ticker -->
+      <div style="background:rgba(34,211,238,.04);border:1px solid rgba(34,211,238,.14);border-radius:8px;padding:7px 14px;overflow:hidden;display:flex;align-items:center;gap:10px;">
+        <span class="pulse-dot cyan" style="flex-shrink:0;"></span>
+        <div style="font-size:10.5px;color:var(--c1);font-family:var(--mono);white-space:nowrap;animation:ticker 14s linear infinite;">
+          ✅ Email Agent: Online (5-min polling) &nbsp;·&nbsp; 🗄 SQL Server: khPriority · Connected &nbsp;·&nbsp; 🤖 Claude Opus 4.7: Active &nbsp;·&nbsp; 📦 Inventory Risk Engine: Running &nbsp;·&nbsp; 🔐 Sender Whitelist: 24 active senders &nbsp;·&nbsp; ✅ Email Agent: Online (5-min polling) &nbsp;·&nbsp; 🗄 SQL Server: khPriority · Connected &nbsp;·&nbsp;
+        </div>
+      </div>
+
+      <!-- KPI row -->
+      <div class="stats-row s6" style="gap:10px;">
+        <div class="stat-card sc-v anim">
+          <div class="stat-icon si-v">📦</div>
+          <div><div class="stat-num" style="color:var(--accent);">2,847</div><div class="stat-lbl">Total SKUs</div></div>
+        </div>
+        <div class="stat-card sc-r anim d1">
+          <div class="stat-icon si-r">⚠</div>
+          <div><div class="stat-num" style="color:var(--r1);">138</div><div class="stat-lbl">Critical/OOS</div></div>
+        </div>
+        <div class="stat-card sc-a anim d2">
+          <div class="stat-icon si-a">📈</div>
+          <div><div class="stat-num" style="color:var(--a1);">412</div><div class="stat-lbl">High Risk</div></div>
+        </div>
+        <div class="stat-card sc-g anim d3">
+          <div class="stat-icon si-g">✅</div>
+          <div><div class="stat-num" style="color:var(--g1);">2,297</div><div class="stat-lbl">Healthy</div></div>
+        </div>
+        <div class="stat-card sc-c anim d4">
+          <div class="stat-icon si-c">🤖</div>
+          <div><div class="stat-num" style="color:var(--c1);">ON</div><div class="stat-lbl">Email Agent</div></div>
+        </div>
+        <div class="stat-card sc-b anim d5">
+          <div class="stat-icon si-b">🗄</div>
+          <div><div class="stat-num" style="color:var(--b2);">8</div><div class="stat-lbl">Sender Tables</div></div>
+        </div>
+      </div>
+
+      <!-- Module cards -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1;">
+        <div class="card anim d2" style="border-top:3px solid var(--c1);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <span style="font-size:18px;">📧</span>
+            <span style="font-size:13px;font-weight:800;color:var(--c1);">Email AI Agent</span>
+            <span class="pill pill-c" style="margin-left:auto;"><span class="pulse-dot cyan" style="width:5px;height:5px;"></span> Live</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--text2);line-height:1.6;margin-bottom:10px;">Auto-reads IMAP inbox, classifies intent, matches inventory, and generates professional replies using Claude Opus 4.7.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+            <span class="pill pill-c">Opus 4.7</span>
+            <span class="pill pill-v">Extended Thinking</span>
+            <span class="pill pill-b">Prompt Cache</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:10.5px;color:var(--text2);">📥 AI Email Inbox</div>
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:10.5px;color:var(--text2);">📄 Drafts</div>
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:10.5px;color:var(--text2);">📊 Monitor</div>
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:10.5px;color:var(--text2);">⚙ Accounts</div>
+          </div>
+        </div>
+
+        <div class="card anim d3" style="border-top:3px solid var(--g1);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <span style="font-size:18px;">📦</span>
+            <span style="font-size:13px;font-weight:800;color:var(--g1);">Inventory Intelligence</span>
+            <span class="pill pill-g" style="margin-left:auto;"><span class="pulse-dot" style="width:5px;height:5px;"></span> Live</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px;text-align:center;">
+            <div><div style="font-size:16px;font-weight:800;color:var(--text);">2,847</div><div style="font-size:9px;color:var(--muted);">SKUs</div></div>
+            <div><div style="font-size:16px;font-weight:800;color:var(--r1);">138</div><div style="font-size:9px;color:var(--muted);">Critical</div></div>
+            <div><div style="font-size:16px;font-weight:800;color:var(--r1);">42</div><div style="font-size:9px;color:var(--muted);">OOS</div></div>
+            <div><div style="font-size:16px;font-weight:800;color:var(--a1);">274</div><div style="font-size:9px;color:var(--muted);">High Risk</div></div>
+            <div><div style="font-size:16px;font-weight:800;color:var(--a1);">138</div><div style="font-size:9px;color:var(--muted);">Reorder</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:10.5px;"><span style="color:var(--r1);width:80px;">Critical/OOS</span><div class="cov-bar" style="flex:1;"><div class="cov-fill cov-r" style="width:63%;"></div></div><span style="color:var(--r1);width:28px;text-align:right;">63%</span></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:10.5px;"><span style="color:var(--a1);width:80px;">High/Reorder</span><div class="cov-bar" style="flex:1;"><div class="cov-fill cov-a" style="width:45%;"></div></div><span style="color:var(--a1);width:28px;text-align:right;">45%</span></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:10.5px;"><span style="color:var(--g1);width:80px;">Healthy</span><div class="cov-bar" style="flex:1;"><div class="cov-fill cov-g" style="width:81%;"></div></div><span style="color:var(--g1);width:28px;text-align:right;">81%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 4 · AI EMAIL INBOX ─────────────────────── -->
+    <div class="slide" id="s4" data-dur="9000">
+      <div class="slide-title">Screen 3 of 11</div>
+      <div class="page-header">
+        <div><div class="page-h1">AI Email Inbox</div><div class="page-sub">Smart inbox — intent detection, SKU extraction, draft generation</div></div>
+        <span class="callout green">✅ Latest First · Sorted by Date</span>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row s4">
+        <div class="stat-card sc-v anim"><div class="stat-icon si-v">📥</div><div><div class="stat-num" style="color:var(--accent);">34</div><div class="stat-lbl">Total Emails</div></div></div>
+        <div class="stat-card sc-g anim d1"><div class="stat-icon si-g">✅</div><div><div class="stat-num" style="color:var(--g1);">21</div><div class="stat-lbl">Registered</div></div></div>
+        <div class="stat-card sc-b anim d2"><div class="stat-icon si-b">📄</div><div><div class="stat-num" style="color:var(--b2);">18</div><div class="stat-lbl">Drafts Ready</div></div></div>
+        <div class="stat-card sc-a anim d3"><div class="stat-icon si-a">👤</div><div><div class="stat-num" style="color:var(--a1);">13</div><div class="stat-lbl">Unregistered</div></div></div>
+      </div>
+
+      <!-- Filter tabs -->
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;gap:5px;">
+          <button style="padding:5px 13px;border-radius:999px;font-size:11px;font-weight:600;background:rgba(99,102,241,.14);border:1px solid rgba(99,102,241,.44);color:var(--accent);">All</button>
+          <button style="padding:5px 13px;border-radius:999px;font-size:11px;background:transparent;border:1px solid var(--border);color:var(--muted);">Inventory</button>
+          <button style="padding:5px 13px;border-radius:999px;font-size:11px;background:transparent;border:1px solid var(--border);color:var(--muted);">General</button>
+          <button style="padding:5px 13px;border-radius:999px;font-size:11px;background:transparent;border:1px solid var(--border);color:var(--muted);">Manual Review</button>
+          <button style="padding:5px 13px;border-radius:999px;font-size:11px;background:transparent;border:1px solid var(--border);color:var(--muted);">Draft Ready</button>
+        </div>
+        <span class="pill pill-g"><span class="pulse-dot" style="width:5px;height:5px;margin-right:2px;"></span> AI Active</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1;">
+        <!-- Registered section -->
+        <div class="tbl-card">
+          <div class="tbl-hd">
+            <div class="tbl-title"><span style="width:26px;height:26px;border-radius:7px;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.22);display:inline-flex;align-items:center;justify-content:center;font-size:11px;">✅</span> Registered Senders</div>
+            <span class="pill pill-g">21 messages</span>
+          </div>
+          <div>
+            <div class="email-card"><div class="av av-g">SR</div><div class="email-body"><div class="email-subject">Stock availability — WBY020 range</div><div class="email-from">sarah.r@staton.corp</div><div style="display:flex;gap:5px;margin-top:5px;"><span class="pill pill-g" style="font-size:9px;">📦 Inventory</span><span class="pill pill-v" style="font-size:9px;">📄 Draft Ready</span></div></div><div class="email-time">2h ago</div></div>
+            <div class="email-card"><div class="av av-v">MK</div><div class="email-body"><div class="email-subject">Re: March coverage report needed</div><div class="email-from">m.khan@buyer.net</div><div style="display:flex;gap:5px;margin-top:5px;"><span class="pill pill-g" style="font-size:9px;">📦 Inventory</span><span class="pill pill-b" style="font-size:9px;">🏷 3 terms</span></div></div><div class="email-time">5h ago</div></div>
+            <div class="email-card"><div class="av av-g">LT</div><div class="email-body"><div class="email-subject">General enquiry re: Q2 shipments</div><div class="email-from">l.taylor@merch.co</div><div style="display:flex;gap:5px;margin-top:5px;"><span class="pill pill-b" style="font-size:9px;">💬 General</span><span class="pill pill-a" style="font-size:9px;">✏ Manual Review</span></div></div><div class="email-time">Yesterday</div></div>
+          </div>
+        </div>
+        <!-- Unregistered section -->
+        <div class="tbl-card" style="border-color:rgba(251,191,36,.2);">
+          <div class="tbl-hd" style="background:rgba(251,191,36,.03);">
+            <div class="tbl-title"><span style="width:26px;height:26px;border-radius:7px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.22);display:inline-flex;align-items:center;justify-content:center;font-size:11px;">👤</span> Unregistered Senders</div>
+            <span class="pill pill-a">13 messages</span>
+          </div>
+          <div>
+            <div class="email-card" style="border-left:3px solid rgba(251,191,36,.3);"><div class="av av-a">JD</div><div class="email-body"><div class="email-subject">Can you send inventory report?</div><div class="email-from">j.doe@unknown.com</div><div style="display:flex;gap:5px;margin-top:5px;"><span class="pill pill-a" style="font-size:9px;">👤 Unregistered</span><span class="pill pill-g" style="font-size:9px;">📦 Inventory</span></div></div><div class="email-time">1h ago</div></div>
+            <div class="email-card" style="border-left:3px solid rgba(251,191,36,.3);"><div class="av av-a">PR</div><div class="email-body"><div class="email-subject">Stock query for upcoming season</div><div class="email-from">p.roberts@newco.io</div><div style="display:flex;gap:5px;margin-top:5px;"><span class="pill pill-a" style="font-size:9px;">👤 Unregistered</span></div></div><div class="email-time">3h ago</div></div>
+            <div style="padding:10px 14px;">
+              <div style="font-size:10.5px;color:var(--muted);text-align:center;">+ 11 more unregistered senders</div>
+              <a style="display:block;text-align:center;padding:7px;margin-top:6px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.26);border-radius:7px;color:var(--a1);font-size:11px;font-weight:600;">✔ Manage Unregistered →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 5 · EMAIL DRAFTS ──────────────────────── -->
+    <div class="slide" id="s5" data-dur="7000">
+      <div class="slide-title">Screen 4 of 11</div>
+      <div class="page-header">
+        <div><div class="page-h1">Email Drafts</div><div class="page-sub">AI-generated reply drafts — review before sending</div></div>
+        <span class="callout">🤖 Auto-generated by Claude Opus 4.7</span>
+      </div>
+      <div class="stats-row s3">
+        <div class="stat-card sc-b anim"><div class="stat-icon si-b">📄</div><div><div class="stat-num" style="color:var(--b2);">18</div><div class="stat-lbl">Total Drafts</div></div></div>
+        <div class="stat-card sc-a anim d1"><div class="stat-icon si-a">⏳</div><div><div class="stat-num" style="color:var(--a1);">12</div><div class="stat-lbl">Pending Review</div></div></div>
+        <div class="stat-card sc-g anim d2"><div class="stat-icon si-g">✉</div><div><div class="stat-num" style="color:var(--g1);">6</div><div class="stat-lbl">Sent</div></div></div>
+      </div>
+      <div class="tbl-card anim d2" style="flex:1;overflow:auto;">
+        <div class="tbl-hd"><div class="tbl-title">📄 Draft Replies</div></div>
+        <table class="tbl">
+          <thead><tr><th>#</th><th>Sender</th><th>Subject</th><th>Organization</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td style="color:var(--muted);font-family:var(--mono);">018</td><td><div style="display:flex;align-items:center;gap:8px;"><div class="av av-g">SR</div>Sarah R.</div></td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Re: Stock availability — WBY020 range</td><td>Staton Corporate</td><td><span class="pill pill-a">⏳ Draft</span></td><td style="font-family:var(--mono);font-size:10.5px;">2h ago</td><td><button style="padding:4px 10px;border-radius:6px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);color:var(--accent);font-size:10.5px;">Open</button></td></tr>
+            <tr><td style="color:var(--muted);font-family:var(--mono);">017</td><td><div style="display:flex;align-items:center;gap:8px;"><div class="av av-v">MK</div>M. Khan</div></td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Re: March coverage report needed</td><td>Buyer Network</td><td><span class="pill pill-a">⏳ Draft</span></td><td style="font-family:var(--mono);font-size:10.5px;">5h ago</td><td><button style="padding:4px 10px;border-radius:6px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);color:var(--accent);font-size:10.5px;">Open</button></td></tr>
+            <tr><td style="color:var(--muted);font-family:var(--mono);">016</td><td><div style="display:flex;align-items:center;gap:8px;"><div class="av av-g">LT</div>L. Taylor</div></td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Re: Q1 WBY050 shipment ETA</td><td>Merch Co</td><td><span class="pill pill-res">✅ Sent</span></td><td style="font-family:var(--mono);font-size:10.5px;">Yesterday</td><td><button style="padding:4px 10px;border-radius:6px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);color:var(--accent);font-size:10.5px;">View</button></td></tr>
+            <tr><td style="color:var(--muted);font-family:var(--mono);">015</td><td><div style="display:flex;align-items:center;gap:8px;"><div class="av av-a">BJ</div>B. Jones</div></td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Re: Critical stock sizes XL/2XL</td><td>Staton Corporate</td><td><span class="pill pill-res">✅ Sent</span></td><td style="font-family:var(--mono);font-size:10.5px;">2d ago</td><td><button style="padding:4px 10px;border-radius:6px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);color:var(--accent);font-size:10.5px;">View</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="background:rgba(99,102,241,.04);border:1px solid rgba(99,102,241,.12);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">🤖</span>
+        <div style="font-size:11.5px;color:var(--text2);">Each draft is generated by <strong style="color:var(--accent);">Claude Opus 4.7</strong> with extended thinking — analyses email intent, matches inventory data, builds professional HTML reply with inline tables. Human review before sending.</div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 6 · APPROVED SENDERS ──────────────────── -->
+    <div class="slide" id="s6" data-dur="7000">
+      <div class="slide-title">Screen 5 of 11</div>
+      <div class="page-header">
+        <div><div class="page-h1">Approved Senders</div><div class="page-sub">Sender whitelist with per-sender inventory table access control</div></div>
+        <span class="callout green">🗄 Table-Level Access Control</span>
+      </div>
+      <div class="stats-row s4">
+        <div class="stat-card sc-v anim"><div class="stat-icon si-v">👥</div><div><div class="stat-num" style="color:var(--accent);">24</div><div class="stat-lbl">Total Senders</div></div></div>
+        <div class="stat-card sc-g anim d1"><div class="stat-icon si-g">✅</div><div><div class="stat-num" style="color:var(--g1);">19</div><div class="stat-lbl">Active</div></div></div>
+        <div class="stat-card sc-r anim d2"><div class="stat-icon si-r">🚫</div><div><div class="stat-num" style="color:var(--r1);">5</div><div class="stat-lbl">Inactive</div></div></div>
+        <div class="stat-card sc-b anim d3"><div class="stat-icon si-b">🗄</div><div><div class="stat-num" style="color:var(--b2);">47</div><div class="stat-lbl">Table Links</div></div></div>
+      </div>
+      <div class="tbl-card anim d2" style="flex:1;overflow:auto;">
+        <div class="tbl-hd"><div class="tbl-title">✅ Approved Sender Registry</div></div>
+        <table class="tbl">
+          <thead><tr><th>Sender</th><th>Inventory Tables</th><th>Status</th><th>Added</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr><td><div style="display:flex;align-items:center;gap:8px;"><div class="av av-g">SR</div><div><div style="font-size:11.5px;font-weight:600;">Sarah Roberts</div><div style="font-size:10px;color:var(--muted);">sarah.r@staton.corp</div></div></div></td>
+              <td><div style="display:flex;gap:4px;flex-wrap:wrap;"><span style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.22);color:var(--b2);font-size:9.5px;padding:2px 7px;border-radius:5px;font-family:var(--mono);">WBY_Stock</span><span style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.22);color:var(--b2);font-size:9.5px;padding:2px 7px;border-radius:5px;font-family:var(--mono);">Coverage_Q1</span></div></td>
+              <td><span class="pill pill-g">● Active</span></td><td style="font-family:var(--mono);font-size:10px;">2026-01-12</td>
+              <td><button style="padding:3px 9px;border-radius:6px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:var(--b2);font-size:10px;">Manage Tables</button></td></tr>
+            <tr><td><div style="display:flex;align-items:center;gap:8px;"><div class="av av-v">MK</div><div><div style="font-size:11.5px;font-weight:600;">M. Khan</div><div style="font-size:10px;color:var(--muted);">m.khan@buyer.net</div></div></div></td>
+              <td><span style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.22);color:var(--b2);font-size:9.5px;padding:2px 7px;border-radius:5px;font-family:var(--mono);">MasterStock</span></td>
+              <td><span class="pill pill-g">● Active</span></td><td style="font-family:var(--mono);font-size:10px;">2026-02-05</td>
+              <td><button style="padding:3px 9px;border-radius:6px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:var(--b2);font-size:10px;">Manage Tables</button></td></tr>
+            <tr><td><div style="display:flex;align-items:center;gap:8px;"><div class="av av-a">LT</div><div><div style="font-size:11.5px;font-weight:600;">L. Taylor</div><div style="font-size:10px;color:var(--muted);">l.taylor@merch.co</div></div></div></td>
+              <td><span style="color:var(--muted);font-size:10px;font-style:italic;">No tables assigned</span></td>
+              <td><span class="pill pill-r">● Inactive</span></td><td style="font-family:var(--mono);font-size:10px;">2025-11-20</td>
+              <td><button style="padding:3px 9px;border-radius:6px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:var(--b2);font-size:10px;">Activate</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 7 · UNREGISTERED USERS ────────────────── -->
+    <div class="slide" id="s7" data-dur="6000">
+      <div class="slide-title">Screen 6 of 11</div>
+      <div class="page-header">
+        <div><div class="page-h1">Unregistered Users</div><div class="page-sub">Unknown senders pending approval — approve to whitelist</div></div>
+        <span class="callout amber">⚠ 7 Pending Approvals</span>
+      </div>
+      <!-- Alert bar -->
+      <div style="background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.22);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:16px;">🔴</span>
+        <div style="font-size:12px;color:var(--r1);">7 unregistered senders sent inventory enquiries. Review and approve to enable AI auto-replies. Sorted: <strong>Latest First</strong>.</div>
+      </div>
+      <!-- Sender cards grid -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;flex:1;overflow:auto;">
+        <div class="card anim" style="border-color:rgba(248,113,113,.2);">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,rgba(248,113,113,.3),rgba(251,146,60,.15));border:1px solid rgba(248,113,113,.4);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--r1);font-family:var(--mono);">JD</div>
+            <div><div style="font-size:12px;font-weight:700;">j.doe@unknown.com</div><span class="pill pill-r" style="margin-top:3px;">⏳ Pending</span></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">📧 "Can you send inventory report for WBY020?"</div>
+          <div style="display:flex;gap:12px;font-size:10px;color:var(--muted);margin-bottom:10px;">
+            <span>Last: 1h ago</span><span>Seen: 3×</span>
+          </div>
+          <button style="width:100%;padding:7px;background:linear-gradient(135deg,var(--g1),#10b981);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;">✔ Approve Sender</button>
+        </div>
+        <div class="card anim d1" style="border-color:rgba(248,113,113,.2);">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,rgba(248,113,113,.3),rgba(251,146,60,.15));border:1px solid rgba(248,113,113,.4);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--r1);font-family:var(--mono);">PR</div>
+            <div><div style="font-size:12px;font-weight:700;">p.roberts@newco.io</div><span class="pill pill-r" style="margin-top:3px;">⏳ Pending</span></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">📧 "Stock query for upcoming season..."</div>
+          <div style="display:flex;gap:12px;font-size:10px;color:var(--muted);margin-bottom:10px;">
+            <span>Last: 3h ago</span><span>Seen: 1×</span>
+          </div>
+          <button style="width:100%;padding:7px;background:linear-gradient(135deg,var(--g1),#10b981);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;">✔ Approve Sender</button>
+        </div>
+        <div class="card anim d2" style="border-color:rgba(248,113,113,.2);">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,rgba(248,113,113,.3),rgba(251,146,60,.15));border:1px solid rgba(248,113,113,.4);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--r1);font-family:var(--mono);">AH</div>
+            <div><div style="font-size:12px;font-weight:700;">a.hassan@trade.pk</div><span class="pill pill-r" style="margin-top:3px;">⏳ Pending</span></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">📧 "Do you have coverage data for Mar?"</div>
+          <div style="display:flex;gap:12px;font-size:10px;color:var(--muted);margin-bottom:10px;">
+            <span>Last: 6h ago</span><span>Seen: 5×</span>
+          </div>
+          <button style="width:100%;padding:7px;background:linear-gradient(135deg,var(--g1),#10b981);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;">✔ Approve Sender</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 8 · EMAIL MONITOR ──────────────────────── -->
+    <div class="slide" id="s8" data-dur="7000">
+      <div class="slide-title">Screen 7 of 11</div>
+      <div class="page-header">
+        <div><div class="page-h1">Email Monitor</div><div class="page-sub">Full activity log — every processed email with intent, SKUs, draft status</div></div>
+        <span class="callout cyan">📊 Real-time Activity Log</span>
+      </div>
+      <div class="tbl-card anim" style="flex:1;overflow:auto;">
+        <div class="tbl-hd">
+          <div class="tbl-title">📊 Email Activity Log</div>
+          <button style="padding:5px 12px;border-radius:7px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);color:var(--c1);font-size:10.5px;">🔄 Refresh</button>
+        </div>
+        <table class="tbl">
+          <thead><tr><th>ID</th><th>Organization</th><th>Sender</th><th>Subject</th><th>Intent</th><th>SKUs</th><th>Draft</th><th>Sent</th><th>Status</th><th>Time</th></tr></thead>
+          <tbody>
+            <tr><td style="font-family:var(--mono);color:var(--muted);">312</td><td>Staton Corp</td><td style="font-size:10.5px;">sarah.r@staton.corp</td><td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">Stock availability WBY020</td><td><span class="pill pill-g" style="font-size:9px;">📦 Inventory</span></td><td style="font-family:var(--mono);font-size:10.5px;color:var(--muted);">WBY020,BLKS</td><td><span class="pill pill-v" style="font-size:9px;">✅</span></td><td><span class="pill pill-g" style="font-size:9px;">✅</span></td><td><span class="pill pill-res" style="font-size:9px;">Sent</span></td><td style="font-family:var(--mono);font-size:10px;">2h ago</td></tr>
+            <tr><td style="font-family:var(--mono);color:var(--muted);">311</td><td>Buyer Net</td><td style="font-size:10.5px;">m.khan@buyer.net</td><td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">March coverage report</td><td><span class="pill pill-g" style="font-size:9px;">📦 Inventory</span></td><td style="font-family:var(--mono);font-size:10.5px;color:var(--muted);">WBY,Coverage</td><td><span class="pill pill-v" style="font-size:9px;">✅</span></td><td><span class="pill pill-a" style="font-size:9px;">⏳</span></td><td><span class="pill pill-a" style="font-size:9px;">Draft</span></td><td style="font-family:var(--mono);font-size:10px;">5h ago</td></tr>
+            <tr><td style="font-family:var(--mono);color:var(--muted);">310</td><td>Unknown</td><td style="font-size:10.5px;">j.doe@unknown.com</td><td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">Can you send inventory?</td><td><span class="pill pill-g" style="font-size:9px;">📦 Inventory</span></td><td style="font-family:var(--mono);font-size:10.5px;color:var(--muted);">—</td><td><span class="pill pill-a" style="font-size:9px;">⏳</span></td><td><span class="pill pill-a" style="font-size:9px;">—</span></td><td><span class="pill pill-a" style="font-size:9px;">Pending</span></td><td style="font-family:var(--mono);font-size:10px;">1h ago</td></tr>
+            <tr><td style="font-family:var(--mono);color:var(--muted);">309</td><td>Merch Co</td><td style="font-size:10.5px;">l.taylor@merch.co</td><td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">Q1 WBY050 shipment ETA</td><td><span class="pill pill-b" style="font-size:9px;">💬 General</span></td><td style="font-family:var(--mono);font-size:10.5px;color:var(--muted);">WBY050</td><td><span class="pill pill-v" style="font-size:9px;">✅</span></td><td><span class="pill pill-res" style="font-size:9px;">✅</span></td><td><span class="pill pill-res" style="font-size:9px;">Sent</span></td><td style="font-family:var(--mono);font-size:10px;">Yesterday</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 9 · EMAIL ACCOUNTS ─────────────────────── -->
+    <div class="slide" id="s9" data-dur="6000">
+      <div class="slide-title">Screen 8 of 11</div>
+      <div class="page-header">
+        <div><div class="page-h1">Email Accounts</div><div class="page-sub">IMAP/SMTP configuration — multi-account, multi-org email management</div></div>
+        <button style="padding:6px 14px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--p2));border:none;color:#fff;font-size:11px;font-weight:700;">+ Add Account</button>
+      </div>
+      <div class="tbl-card anim" style="flex:1;overflow:auto;">
+        <div class="tbl-hd"><div class="tbl-title">📧 Registered Email Accounts</div></div>
+        <table class="tbl">
+          <thead><tr><th>Account Name</th><th>Email Address</th><th>Organization</th><th>Provider</th><th>SMTP</th><th>IMAP</th><th>Auto Reply</th><th>Active</th><th>Interval</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600;">Staton Primary</td><td style="font-family:var(--mono);font-size:11px;">ops@staton.corp</td><td>Staton Corporate</td><td><span class="pill pill-b" style="font-size:9px;">Gmail</span></td>
+              <td style="font-family:var(--mono);font-size:10px;">smtp.gmail.com:587</td><td style="font-family:var(--mono);font-size:10px;">imap.gmail.com:993</td>
+              <td><span class="pill pill-v" style="font-size:9px;">Enabled</span></td><td><span class="pill pill-g" style="font-size:9px;">● Active</span></td>
+              <td style="font-family:var(--mono);font-size:10px;">5 min</td><td style="display:flex;gap:5px;"><button style="padding:3px 8px;border-radius:5px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:var(--b2);font-size:10px;">Edit</button><button style="padding:3px 8px;border-radius:5px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:var(--r1);font-size:10px;">Del</button></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600;">Buyer Network</td><td style="font-family:var(--mono);font-size:11px;">info@buyer.net</td><td>Buyer Network</td><td><span class="pill pill-c" style="font-size:9px;">Outlook</span></td>
+              <td style="font-family:var(--mono);font-size:10px;">smtp.office365.com:587</td><td style="font-family:var(--mono);font-size:10px;">outlook.office365.com:993</td>
+              <td><span class="pill pill-a" style="font-size:9px;">Disabled</span></td><td><span class="pill pill-a" style="font-size:9px;">● Inactive</span></td>
+              <td style="font-family:var(--mono);font-size:10px;">10 min</td><td style="display:flex;gap:5px;"><button style="padding:3px 8px;border-radius:5px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:var(--b2);font-size:10px;">Edit</button><button style="padding:3px 8px;border-radius:5px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:var(--r1);font-size:10px;">Del</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <div class="callout">⚙ APScheduler polls every configured interval</div>
+        <div class="callout cyan">🔒 Passwords stored encrypted</div>
+        <div class="callout green">📡 IMAP + SMTP per account</div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 10 · INVENTORY ENGINE ─────────────────── -->
+    <div class="slide" id="s10" data-dur="9000">
+      <div class="slide-title">Screen 9 of 11</div>
+      <div class="page-header">
+        <div><div class="page-h1">Inventory Engine</div><div class="page-sub">Brand coverage dashboard — SKU-level risk analysis with 6-month sales data</div></div>
+        <span class="callout green">📊 Live Coverage Analysis</span>
+      </div>
+      <!-- Stats -->
+      <div class="stats-row s4">
+        <div class="stat-card sc-c anim"><div class="stat-icon si-c">™</div><div><div class="stat-num" style="color:var(--c1);">18</div><div class="stat-lbl">Brands</div></div></div>
+        <div class="stat-card sc-r anim d1"><div class="stat-icon si-r">💀</div><div><div class="stat-num" style="color:var(--r1);">4</div><div class="stat-lbl">Critical Brands</div></div></div>
+        <div class="stat-card sc-a anim d2"><div class="stat-icon si-a">📦</div><div><div class="stat-num" style="color:var(--a1);">42</div><div class="stat-lbl">Out of Stock</div></div></div>
+        <div class="stat-card sc-v anim d3"><div class="stat-icon si-v">📋</div><div><div class="stat-num" style="color:var(--accent);">138</div><div class="stat-lbl">Req Order</div></div></div>
+      </div>
+      <!-- Brand table -->
+      <div class="tbl-card anim d2" style="flex:1;overflow:auto;">
+        <div class="tbl-hd"><div class="tbl-title">📊 Brand Coverage Summary</div><div style="font-size:10px;color:var(--muted);font-family:var(--mono);">Anchor: 2026-03-10</div></div>
+        <table class="tbl">
+          <thead><tr><th>Brand</th><th>SKUs</th><th>Avg Coverage</th><th>Critical</th><th>Low Cov</th><th>Out of Stock</th><th>Req Order</th><th>Available</th><th>In Transit</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:700;">WBY</td><td style="font-family:var(--mono);">1,248</td>
+              <td><div style="display:flex;align-items:center;gap:6px;"><span style="background:rgba(255,90,122,.18);border:1px solid rgba(255,90,122,.3);color:#ff7b9a;font-size:10px;padding:2px 8px;border-radius:5px;font-weight:700;">14.2%</span><div class="cov-bar" style="width:60px;"><div class="cov-fill cov-r" style="width:14%;"></div></div></div></td>
+              <td style="color:var(--crit);font-weight:700;font-family:var(--mono);">312</td><td style="color:var(--a1);font-family:var(--mono);">428</td><td style="color:var(--r1);font-weight:700;font-family:var(--mono);">28</td>
+              <td style="color:var(--accent);font-family:var(--mono);">89</td><td style="font-family:var(--mono);">24,810</td><td style="font-family:var(--mono);">3,200</td>
+              <td><button style="padding:3px 9px;border-radius:5px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.2);color:var(--c1);font-size:10px;">▼ Expand</button></td>
+            </tr>
+            <tr>
+              <td style="font-weight:700;">ZAP</td><td style="font-family:var(--mono);">892</td>
+              <td><div style="display:flex;align-items:center;gap:6px;"><span style="background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.28);color:var(--a1);font-size:10px;padding:2px 8px;border-radius:5px;font-weight:700;">67.8%</span><div class="cov-bar" style="width:60px;"><div class="cov-fill cov-a" style="width:68%;"></div></div></div></td>
+              <td style="color:var(--muted);font-family:var(--mono);">48</td><td style="color:var(--a1);font-family:var(--mono);">214</td><td style="color:var(--r1);font-family:var(--mono);">7</td>
+              <td style="color:var(--accent);font-family:var(--mono);">31</td><td style="font-family:var(--mono);">18,440</td><td style="font-family:var(--mono);">1,800</td>
+              <td><button style="padding:3px 9px;border-radius:5px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.2);color:var(--c1);font-size:10px;">▼ Expand</button></td>
+            </tr>
+            <tr>
+              <td style="font-weight:700;">POLO</td><td style="font-family:var(--mono);">418</td>
+              <td><div style="display:flex;align-items:center;gap:6px;"><span style="background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.28);color:var(--g1);font-size:10px;padding:2px 8px;border-radius:5px;font-weight:700;">142%</span><div class="cov-bar" style="width:60px;"><div class="cov-fill cov-g" style="width:100%;"></div></div></div></td>
+              <td style="color:var(--muted);font-family:var(--mono);">0</td><td style="color:var(--muted);font-family:var(--mono);">12</td><td style="color:var(--muted);font-family:var(--mono);">0</td>
+              <td style="color:var(--muted);font-family:var(--mono);">0</td><td style="font-family:var(--mono);">8,920</td><td style="font-family:var(--mono);">600</td>
+              <td><button style="padding:3px 9px;border-radius:5px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.2);color:var(--c1);font-size:10px;">▼ Expand</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- AI insight -->
+      <div style="background:rgba(34,211,238,.04);border-left:3px solid var(--c1);border-radius:0 8px 8px 0;padding:10px 14px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:16px;">🤖</span>
+        <div style="font-size:11.5px;color:var(--text2);">⚠️ <strong>4 critical brands</strong> below 20% coverage · 🔴 <strong>42 SKUs out of stock</strong> · 📋 <strong>138 new orders required</strong> — review WBY immediately.</div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 11 · INVENTORY ALERTS ─────────────────── -->
+    <div class="slide" id="s11" data-dur="8000">
+      <div class="slide-title">Screen 10 of 11</div>
+      <div class="page-header">
+        <div><div class="page-h1">Inventory Alerts</div><div class="page-sub">Auto-generated alerts — critical stock drops, coverage changes, OOS events</div></div>
+        <span class="callout" style="background:rgba(255,90,122,.08);border-color:rgba(255,90,122,.3);color:var(--crit);">🔴 12 Critical Alerts</span>
+      </div>
+      <!-- Stats -->
+      <div class="stats-row s4">
+        <div class="stat-card sc-c anim"><div class="stat-icon si-c">🔔</div><div><div class="stat-num" style="color:var(--c1);">47</div><div class="stat-lbl">Total Alerts</div></div></div>
+        <div class="stat-card sc-r anim d1"><div class="stat-icon si-r">💀</div><div><div class="stat-num" style="color:var(--crit);">12</div><div class="stat-lbl">Critical</div></div></div>
+        <div class="stat-card sc-a anim d2"><div class="stat-icon si-a">📈</div><div><div class="stat-num" style="color:var(--high);">19</div><div class="stat-lbl">High</div></div></div>
+        <div class="stat-card sc-c anim d3"><div class="stat-icon si-c">📉</div><div><div class="stat-num" style="color:var(--med);">16</div><div class="stat-lbl">Medium</div></div></div>
+      </div>
+      <!-- Alerts table -->
+      <div class="tbl-card anim d2" style="flex:1;overflow:auto;">
+        <div class="tbl-hd">
+          <div class="tbl-title">🔔 Active Inventory Alerts</div>
+          <button style="padding:5px 12px;border-radius:7px;background:linear-gradient(135deg,var(--crit),#e0395a);border:none;color:#fff;font-size:10.5px;font-weight:700;">⚡ Generate Alerts</button>
+        </div>
+        <table class="tbl">
+          <thead><tr><th>Type</th><th>Severity</th><th>Brand</th><th>Style</th><th>SKU</th><th>Change</th><th>Message</th><th>Status</th><th>Created</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="pill" style="background:rgba(255,90,122,.12);border:1px solid rgba(255,90,122,.25);color:#ff7b9a;font-size:9px;">📦 Stock</span></td>
+              <td><span style="background:rgba(255,90,122,.2);color:#ff7b9a;font-size:9.5px;padding:2px 8px;border-radius:5px;font-weight:700;">Critical</span></td>
+              <td style="font-weight:700;">WBY</td><td>WBY020</td><td style="font-family:var(--mono);font-size:10.5px;">WBY020BLKS</td>
+              <td><span style="color:var(--r1);text-decoration:line-through;font-size:10.5px;">144</span> → <span style="color:var(--g1);font-size:10.5px;">0</span></td>
+              <td style="font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Out of stock — reorder required</td>
+              <td><span class="pill pill-r" style="font-size:9px;">Open</span></td><td style="font-family:var(--mono);font-size:10px;">2h ago</td>
+              <td><button style="padding:3px 9px;border-radius:5px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.2);color:var(--g1);font-size:10px;">Resolve</button></td>
+            </tr>
+            <tr>
+              <td><span class="pill" style="background:rgba(255,194,61,.12);border:1px solid rgba(255,194,61,.25);color:var(--high);font-size:9px;">📊 Coverage</span></td>
+              <td><span style="background:rgba(255,194,61,.2);color:var(--high);font-size:9.5px;padding:2px 8px;border-radius:5px;font-weight:700;">High</span></td>
+              <td style="font-weight:700;">ZAP</td><td>ZAP050</td><td style="font-family:var(--mono);font-size:10.5px;">ZAP050REDM</td>
+              <td><span style="color:var(--g1);font-size:10.5px;">89%</span> → <span style="color:var(--r1);font-size:10.5px;">18%</span></td>
+              <td style="font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Coverage dropped >70% — critical</td>
+              <td><span class="pill pill-r" style="font-size:9px;">Open</span></td><td style="font-family:var(--mono);font-size:10px;">5h ago</td>
+              <td><button style="padding:3px 9px;border-radius:5px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.2);color:var(--g1);font-size:10px;">Resolve</button></td>
+            </tr>
+            <tr>
+              <td><span class="pill" style="background:rgba(33,212,253,.12);border:1px solid rgba(33,212,253,.25);color:var(--med);font-size:9px;">⚠ Risk</span></td>
+              <td><span style="background:rgba(33,212,253,.2);color:var(--med);font-size:9.5px;padding:2px 8px;border-radius:5px;font-weight:700;">Medium</span></td>
+              <td style="font-weight:700;">POLO</td><td>PL200</td><td style="font-family:var(--mono);font-size:10.5px;">PL200WHTS</td>
+              <td><span style="color:var(--muted);font-size:10.5px;">OK</span> → <span style="color:var(--a1);font-size:10.5px;">High Risk</span></td>
+              <td style="font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Risk status changed</td>
+              <td><span class="pill pill-res" style="font-size:9px;">Resolved</span></td><td style="font-family:var(--mono);font-size:10px;">Yesterday</td>
+              <td><span style="font-size:10px;color:var(--muted);">✓ Done</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 12 · OUTRO ──────────────────────────────── -->
+    <div class="slide" id="s12" data-dur="9000">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;text-align:center;">
+
+        <div class="anim" style="font-size:36px;font-weight:900;background:linear-gradient(135deg,#6366f1,#22d3ee,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.03em;">MerchOps Agent</div>
+        <div class="anim d1" style="font-size:13px;color:var(--muted);">Complete Platform Overview</div>
+
+        <!-- Feature grid -->
+        <div class="anim d2" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;max-width:800px;">
+          <div class="card-sm" style="text-align:center;border-top:2px solid var(--c1);">
+            <div style="font-size:22px;margin-bottom:6px;">👁</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);">Biometric Login</div>
+            <div style="font-size:9.5px;color:var(--muted);margin-top:3px;">Face Recognition + Password</div>
+          </div>
+          <div class="card-sm" style="text-align:center;border-top:2px solid var(--g1);">
+            <div style="font-size:22px;margin-bottom:6px;">📧</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);">AI Email Inbox</div>
+            <div style="font-size:9.5px;color:var(--muted);margin-top:3px;">Sorted · Registered · Unregistered</div>
+          </div>
+          <div class="card-sm" style="text-align:center;border-top:2px solid var(--accent);">
+            <div style="font-size:22px;margin-bottom:6px;">🤖</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);">Claude Opus 4.7</div>
+            <div style="font-size:9.5px;color:var(--muted);margin-top:3px;">Auto Draft · Extended Thinking</div>
+          </div>
+          <div class="card-sm" style="text-align:center;border-top:2px solid var(--b2);">
+            <div style="font-size:22px;margin-bottom:6px;">🔔</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);">Live Notifications</div>
+            <div style="font-size:9.5px;color:var(--muted);margin-top:3px;">Registered senders · Auth-gated</div>
+          </div>
+          <div class="card-sm" style="text-align:center;border-top:2px solid var(--a1);">
+            <div style="font-size:22px;margin-bottom:6px;">✅</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);">Sender Whitelist</div>
+            <div style="font-size:9.5px;color:var(--muted);margin-top:3px;">Table-level access control</div>
+          </div>
+          <div class="card-sm" style="text-align:center;border-top:2px solid var(--r1);">
+            <div style="font-size:22px;margin-bottom:6px;">📦</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);">Inventory Engine</div>
+            <div style="font-size:9.5px;color:var(--muted);margin-top:3px;">Brand coverage · Risk scoring</div>
+          </div>
+          <div class="card-sm" style="text-align:center;border-top:2px solid var(--crit);">
+            <div style="font-size:22px;margin-bottom:6px;">⚠</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);">Inventory Alerts</div>
+            <div style="font-size:9.5px;color:var(--muted);margin-top:3px;">Critical · High · Medium</div>
+          </div>
+          <div class="card-sm" style="text-align:center;border-top:2px solid var(--p2);">
+            <div style="font-size:22px;margin-bottom:6px;">🏢</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);">Multi-Tenant</div>
+            <div style="font-size:9.5px;color:var(--muted);margin-top:3px;">Orgs · Roles · SQL Server</div>
+          </div>
+        </div>
+
+        <!-- Tech stack -->
+        <div class="anim d3" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+          <span class="pill pill-v">Flask · Python</span>
+          <span class="pill pill-c">Claude Opus 4.7</span>
+          <span class="pill pill-b">SQL Server</span>
+          <span class="pill pill-g">APScheduler</span>
+          <span class="pill pill-a">IMAP · SMTP</span>
+          <span class="pill pill-r">Face Recognition</span>
+          <span class="pill pill-v">Jinja2 Templates</span>
+          <span class="pill pill-b">Flask-Login</span>
+        </div>
+
+        <div class="anim d4" style="font-size:20px;color:var(--muted);">
+          Built with <span style="color:var(--r1);">❤</span> — MerchOps Agent
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /slides -->
+
+  <!-- Controls -->
+  <div id="ctrl">
+    <button class="c-btn" id="btnPrev" onclick="prevSlide()">◀ Prev</button>
+    <button class="c-btn primary" id="btnPlay" onclick="togglePlay()">⏸ Pause</button>
+    <button class="c-btn" id="btnNext" onclick="nextSlide()">Next ▶</button>
+    <div id="slide-counter">1 / 12</div>
+    <!-- Timer ring -->
+    <div id="timer-ring">
+      <svg width="28" height="28" viewBox="0 0 28 28">
+        <circle cx="14" cy="14" r="11" fill="none" stroke="#1e2a40" stroke-width="2.5"/>
+        <circle id="timer-circle" cx="14" cy="14" r="11" fill="none" stroke="#6366f1" stroke-width="2.5"
+                stroke-dasharray="69.1" stroke-dashoffset="0" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+
+</div><!-- /pres -->
+
+<script>
+(function(){
+  var slides    = document.querySelectorAll('.slide');
+  var progBar   = document.getElementById('prog-bar');
+  var counter   = document.getElementById('slide-counter');
+  var timerCirc = document.getElementById('timer-circle');
+  var btnPlay   = document.getElementById('btnPlay');
+  var CIRC_LEN  = 69.1;
+
+  var current   = 0;
+  var playing   = true;
+  var autoTimer = null;
+  var tickTimer = null;
+  var tickStart = 0;
+  var tickDur   = 0;
+
+  function getDur(idx){ return parseInt(slides[idx].dataset.dur) || 6000; }
+
+  function showSlide(idx){
+    var old = current;
+    current = (idx + slides.length) % slides.length;
+    slides[old].classList.remove('active');
+    slides[old].classList.add('exit');
+    setTimeout(function(){ slides[old].classList.remove('exit'); }, 500);
+    slides[current].classList.add('active');
+    counter.textContent = (current+1) + ' / ' + slides.length;
+    // Update progress bar (overall)
+    progBar.style.width = ((current/(slides.length-1))*100) + '%';
+  }
+
+  function startTick(){
+    clearInterval(tickTimer);
+    tickStart = Date.now();
+    tickDur   = getDur(current);
+    tickTimer = setInterval(function(){
+      var elapsed = Date.now() - tickStart;
+      var frac    = Math.min(elapsed / tickDur, 1);
+      timerCirc.style.strokeDashoffset = CIRC_LEN * (1 - frac);
+    }, 60);
+  }
+
+  function scheduleNext(){
+    clearTimeout(autoTimer);
+    if(!playing) return;
+    autoTimer = setTimeout(function(){
+      nextSlide();
+    }, getDur(current));
+    startTick();
+  }
+
+  function nextSlide(){
+    showSlide(current + 1);
+    scheduleNext();
+  }
+
+  function prevSlide(){
+    showSlide(current - 1);
+    scheduleNext();
+  }
+
+  function togglePlay(){
+    playing = !playing;
+    btnPlay.textContent = playing ? '⏸ Pause' : '▶ Play';
+    if(playing){ scheduleNext(); }
+    else{ clearTimeout(autoTimer); clearInterval(tickTimer); }
+  }
+
+  // Keyboard
+  document.addEventListener('keydown', function(e){
+    if(e.key==='ArrowRight'||e.key===' '){ nextSlide(); }
+    if(e.key==='ArrowLeft'){ prevSlide(); }
+    if(e.key==='p'||e.key==='P'){ togglePlay(); }
+  });
+
+  // Expose to onclick
+  window.nextSlide  = nextSlide;
+  window.prevSlide  = prevSlide;
+  window.togglePlay = togglePlay;
+
+  // Start
+  slides[0].classList.add('active');
+  scheduleNext();
+}());
+</script>
+</body>
+</html>

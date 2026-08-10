@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480">
+  <rect width="640" height="480" fill="#fffaf0"/>
+  <rect x="120" y="70" width="400" height="340" rx="28" fill="#fef3c7"/>
+  <path d="M230 125h180l46 78-54 38-22-34v150H260V207l-22 34-54-38 46-78z" fill="#b45309" stroke="#fde68a" stroke-width="8"/>
+  <text x="320" y="430" text-anchor="middle" font-family="Arial" font-size="28" font-weight="700" fill="#78350f">MRD707-TAN</text>
+</svg>

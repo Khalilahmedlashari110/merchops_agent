@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Email Detail{% endblock %}
+{% block page_title %}Email Detail{% endblock %}
+{% block page_subtitle %}Review incoming email, matched inventory, and generated draft.{% endblock %}
+
+{% block content %}
+<div class="grid grid-2">
+    <div class="card">
+        <h3 class="section-title">Incoming Email</h3>
+
+        <p><strong>From:</strong> {{ email_item.from }}</p>
+        <p><strong>To:</strong> {{ email_item.to }}</p>
+        <p><strong>Date:</strong> {{ email_item.date }}</p>
+        <p><strong>Subject:</strong> {{ email_item.subject }}</p>
+
+        <div style="margin:12px 0; display:flex; gap:8px; flex-wrap:wrap;">
+            {% if email_item.parsed.is_inventory_request %}
+                <span class="pill" style="background:#e8f6ee; color:#1d6b42;">Inventory</span>
+            {% else %}
+                <span class="pill">General</span>
+            {% endif %}
+
+            {% if email_item.auto_draft_enabled %}
+                <span class="pill" style="background:#e8f1fb; color:#245a8a;">Draft Created</span>
+            {% else %}
+                <span class="pill" style="background:#fff4e5; color:#a05a00;">Manual Review</span>
+            {% endif %}
+        </div>
+
+        <hr style="margin:16px 0;">
+        <div style="white-space:pre-wrap; line-height:1.7;">{{ email_item.body }}</div>
+    </div>
+
+    <div class="card">
+        <h3 class="section-title">Reply Draft Status</h3>
+
+        {% if email_item.auto_draft_enabled %}
+            <p class="muted">
+                A formatted draft has been created for this inventory-related email.
+                It has not been sent automatically.
+            </p>
+
+            {% if email_item.draft_id %}
+                <a class="btn" href="{{ url_for('email_agent.draft_detail', draft_id=email_item.draft_id) }}">
+                    Open Draft for Review
+                </a>
+            {% endif %}
+        {% else %}
+            <p class="muted">
+                No automatic draft was created because this email was not classified as inventory-related.
+            </p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card" style="margin-top:18px;">
+    <h3 class="section-title">Parsed Request</h3>
+    <div class="table-wrap">
+        <table>
+            <tbody>
+                <tr>
+                    <th>Intent</th>
+                    <td>{{ email_item.parsed.action_intent }}</td>
+                </tr>
+                <tr>
+                    <th>Styles</th>
+                    <td>{{ email_item.parsed.styles|join(', ') }}</td>
+                </tr>
+                <tr>
+                    <th>Colours</th>
+                    <td>{{ email_item.parsed.colours|join(', ') }}</td>
+                </tr>
+                <tr>
+                    <th>Sizes</th>
+                    <td>{{ email_item.parsed.sizes|join(', ') }}</td>
+                </tr>
+                <tr>
+                    <th>SKUs</th>
+                    <td>{{ email_item.parsed.skus|join(', ') }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card" style="margin-top:18px;">
+    <h3 class="section-title">Matched Inventory Rows</h3>
+
+    {% if email_item.matched_rows %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>SKU</th>
+                        <th>Brand</th>
+                        <th>Style</th>
+                        <th>Colour</th>
+                        <th>Size</th>
+                        <th>Available</th>
+                        <th>Coverage %</th>
+                        <th>Coverage Incl InTransit %</th>
+                        <th>Req New Order</th>
+                        <th>Risk</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in email_item.matched_rows %}
+                    <tr>
+                        <td><strong>{{ row.SKU }}</strong></td>
+                        <td>{{ row.Brand }}</td>
+                        <td>{{ row.Style }}</td>
+                        <td>{{ row.Colour }}</td>
+                        <td>{{ row.SSize }}</td>
+                        <td>{{ row.AvailableQty }}</td>
+                        <td>{{ row.CoveragePct }}</td>
+                        <td>{{ row.CoveragePctInclInTransit }}</td>
+                        <td>{{ row.ReqNewOrderQty }}</td>
+                        <td>{{ row.RiskStatus }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="muted">No matching inventory rows found for this email.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480">
+  <rect width="640" height="480" fill="#f8fafc"/>
+  <rect x="120" y="70" width="400" height="340" rx="28" fill="#e5e7eb"/>
+  <path d="M235 105h170l50 70-50 185H235l-50-185 50-70z" fill="#6b7280" stroke="#d1d5db" stroke-width="8"/>
+  <path d="M260 155h120" stroke="#f9fafb" stroke-width="10" stroke-linecap="round"/>
+  <text x="320" y="430" text-anchor="middle" font-family="Arial" font-size="28" font-weight="700" fill="#374151">NPK118-GRY</text>
+</svg>

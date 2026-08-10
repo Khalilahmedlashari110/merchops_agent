@@ -1,0 +1,939 @@
+{% extends "base.html" %}
+
+{% block title %}Approved Senders | MerchOps AI{% endblock %}
+{% block page_title %}Approved Senders{% endblock %}
+{% block page_subtitle %}Manage senders and their assigned inventory data sources.{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Page-level tokens ───────────────────────────────── */
+:root {
+    --p1: #6366f1; --p2: #8b5cf6;
+    --b1: #3b82f6; --b2: #60a5fa;
+    --g1: #34d399; --a1: #fbbf24;
+    --r1: #f87171; --c1: #22d3ee;
+}
+
+/* ── Page header ─────────────────────────────────────── */
+.as-header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    flex-wrap: wrap; gap: 14px; margin-bottom: 24px;
+}
+.as-title   { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -.02em; }
+.as-sub     { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.as-actions { display: flex; align-items: center; gap: 10px; }
+
+.as-add-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 18px;
+}
+.as-add-title {
+    display: flex; align-items: center; gap: 9px;
+    color: var(--text); font-size: 13px; font-weight: 800;
+    margin-bottom: 12px;
+}
+.as-add-form {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.2fr) minmax(180px, .9fr) minmax(180px, .8fr) auto;
+    gap: 10px;
+    align-items: end;
+}
+.as-field label {
+    display: block; margin-bottom: 6px; color: var(--muted);
+    font-size: 10px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase;
+}
+.as-input,
+.as-select {
+    width: 100%; height: 36px; border: 1px solid var(--card-border);
+    border-radius: 8px; background: rgba(148,163,184,.05);
+    color: var(--text); padding: 0 11px; font: 700 12px var(--font);
+    outline: none;
+}
+.as-input:focus,
+.as-select:focus { border-color: rgba(99,102,241,.48); box-shadow: 0 0 0 3px rgba(99,102,241,.10); }
+.as-select option { background: var(--surface2); color: var(--text); }
+.as-submit-btn {
+    height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border: 1px solid rgba(52,211,153,.28); border-radius: 8px;
+    background: rgba(52,211,153,.10); color: var(--green);
+    padding: 0 14px; font: 850 12px var(--font); cursor: pointer;
+}
+
+/* ── Stats strip ─────────────────────────────────────── */
+.stats-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px; margin-bottom: 24px;
+}
+.stat-box {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--r-lg);
+    padding: 16px 18px;
+    display: flex; align-items: center; gap: 14px;
+    transition: border-color .18s, transform .18s;
+    position: relative; overflow: hidden;
+}
+.stat-box::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.stat-box:hover { border-color: rgba(99,102,241,.32); transform: translateY(-2px); }
+.sb-total::before  { background: linear-gradient(90deg, var(--p1), var(--b1)); }
+.sb-active::before { background: linear-gradient(90deg, var(--g1), var(--c1)); }
+.sb-inactive::before { background: linear-gradient(90deg, var(--r1), #fb923c); }
+.sb-tables::before { background: linear-gradient(90deg, var(--b1), var(--p2)); }
+.stat-icon {
+    width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.si-violet { background: rgba(99,102,241,.12); border: 1px solid rgba(99,102,241,.22); color: var(--accent); }
+.si-green  { background: rgba(52,211,153,.10); border: 1px solid rgba(52,211,153,.22); color: var(--g1); }
+.si-red    { background: rgba(248,113,113,.10); border: 1px solid rgba(248,113,113,.22); color: var(--r1); }
+.si-blue   { background: rgba(96,165,250,.10); border: 1px solid rgba(96,165,250,.22); color: var(--b2); }
+.stat-num  { font-size: 26px; font-weight: 800; line-height: 1; letter-spacing: -.04em; }
+.stat-lbl  { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 3px; }
+
+/* ── Table card ──────────────────────────────────────── */
+.tbl-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--r-lg); overflow: hidden;
+}
+.tbl-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 22px; border-bottom: 1px solid var(--card-border);
+    flex-wrap: wrap; gap: 10px;
+}
+.tbl-header-left { display: flex; align-items: center; gap: 10px; }
+.tbl-header-icon {
+    width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+    background: rgba(99,102,241,.12); border: 1px solid rgba(99,102,241,.22);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: var(--accent);
+}
+.tbl-header-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.count-pill {
+    background: rgba(99,102,241,.10); border: 1px solid rgba(99,102,241,.20);
+    color: var(--text-2); font-size: 10.5px; font-weight: 600;
+    padding: 3px 11px; border-radius: 999px;
+}
+
+/* Search */
+.search-wrap { position: relative; width: 240px; }
+.search-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 11px; pointer-events: none; }
+.search-input {
+    width: 100%; background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 999px; padding: 8px 14px 8px 32px;
+    color: var(--text); font-size: 12.5px; outline: none; font-family: var(--font);
+    transition: border-color .18s, box-shadow .18s;
+}
+.search-input:focus { border-color: rgba(99,102,241,.50); box-shadow: 0 0 0 3px rgba(99,102,241,.10); }
+.search-input::placeholder { color: var(--muted); }
+
+/* ── Senders table ───────────────────────────────────── */
+.senders-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.senders-tbl thead tr {
+    border-bottom: 1px solid rgba(99,102,241,.18);
+}
+.senders-tbl th {
+    padding: 12px 18px; text-align: left;
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .11em;
+    color: var(--accent);
+    background: linear-gradient(180deg, rgba(99,102,241,.09) 0%, rgba(99,102,241,.04) 100%);
+    white-space: nowrap;
+    position: sticky; top: 0; z-index: 2;
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.senders-tbl th:first-child { border-radius: 0; }
+.senders-tbl tbody tr {
+    transition: background .14s;
+    border-bottom: 1px solid rgba(99,102,241,.06);
+}
+.senders-tbl tbody tr:last-child { border-bottom: none; }
+.senders-tbl td {
+    padding: 14px 18px;
+    color: var(--text-2); vertical-align: middle;
+    transition: background .14s;
+}
+/* Left-border accent on hover - inset shadow avoids layout shift */
+.senders-tbl tbody tr:hover td { background: rgba(99,102,241,.06); }
+.senders-tbl tbody tr:hover td:first-child {
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+/* Subtle shimmer on every other row - just barely visible */
+.senders-tbl tbody tr:nth-child(odd) td { background: rgba(99,102,241,.015); }
+.senders-tbl tbody tr:nth-child(odd):hover td { background: rgba(99,102,241,.06); }
+
+/* Sender email+avatar cell */
+.sender-cell { display: flex; align-items: center; gap: 11px; }
+.sender-avatar {
+    width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(99,102,241,.28), rgba(59,130,246,.16));
+    border: 1px solid rgba(99,102,241,.36);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--accent);
+    font-family: var(--font-mono); text-transform: uppercase;
+    box-shadow: 0 0 0 0 rgba(99,102,241,.0);
+    transition: box-shadow .2s, border-color .2s;
+}
+.sender-row:hover .sender-avatar {
+    box-shadow: 0 0 12px rgba(99,102,241,.30);
+    border-color: rgba(99,102,241,.60);
+}
+.sender-email { font-weight: 600; color: var(--text); font-size: 12.5px; }
+.sender-name  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* Table chips */
+.chip-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.db-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.22);
+    color: var(--b2); padding: 3px 10px; border-radius: 999px;
+    font-size: 10.5px; font-family: var(--font-mono); font-weight: 600;
+    transition: all .15s;
+}
+.db-chip:hover { background: rgba(59,130,246,.14); border-color: rgba(59,130,246,.36); }
+.db-chip-remove {
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); font-size: 9px; line-height: 1; padding: 0;
+    display: flex; align-items: center; transition: color .15s;
+}
+.db-chip-remove:hover { color: var(--r1); }
+.chip-none-text { color: var(--muted); font-size: 11.5px; font-style: italic; }
+
+/* Status badges */
+.status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 11px; border-radius: 999px; font-size: 10.5px; font-weight: 700;
+}
+.badge-on  { background: rgba(52,211,153,.10); border: 1px solid rgba(52,211,153,.24); color: var(--g1); }
+.badge-off { background: rgba(248,113,113,.10); border: 1px solid rgba(248,113,113,.24); color: var(--r1); }
+.badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.bdot-on   { background: var(--g1); box-shadow: 0 0 5px var(--g1); animation: glow-pulse 2s ease-in-out infinite; }
+.bdot-off  { background: var(--r1); }
+@keyframes glow-pulse { 0%,100%{opacity:.7} 50%{opacity:1} }
+
+/* Date cell */
+.date-cell { font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+/* Action buttons */
+.action-cell { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.act-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 13px; border-radius: 8px; font-size: 11.5px; font-weight: 600;
+    cursor: pointer; transition: all .18s; border: 1px solid; font-family: var(--font);
+    text-decoration: none; white-space: nowrap;
+}
+.act-manage {
+    background: rgba(99,102,241,.08); border-color: rgba(99,102,241,.26); color: var(--accent);
+}
+.act-manage:hover {
+    background: rgba(99,102,241,.16); border-color: rgba(99,102,241,.50);
+    box-shadow: 0 0 12px rgba(99,102,241,.18); color: var(--text);
+}
+.act-deactivate {
+    background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.26); color: var(--r1);
+}
+.act-deactivate:hover {
+    background: rgba(248,113,113,.16); border-color: rgba(248,113,113,.50);
+    box-shadow: 0 0 12px rgba(248,113,113,.15);
+}
+.act-delete {
+    background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.26); color: var(--r1);
+}
+.act-delete:hover {
+    background: rgba(248,113,113,.16); border-color: rgba(248,113,113,.50);
+}
+.act-activate {
+    background: rgba(52,211,153,.08); border-color: rgba(52,211,153,.26); color: var(--g1);
+}
+.act-activate:hover {
+    background: rgba(52,211,153,.16); border-color: rgba(52,211,153,.50);
+    box-shadow: 0 0 12px rgba(52,211,153,.15);
+}
+.act-form { margin: 0; }
+
+/* ── Scroll wrapper ──────────────────────────────────── */
+.tbl-scroll { overflow-x: auto; }
+
+/* ── Empty state ─────────────────────────────────────── */
+.empty-wrap {
+    padding: 56px 24px; text-align: center;
+}
+.empty-icon-ring {
+    width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 18px;
+    background: rgba(99,102,241,.07); border: 1px solid rgba(99,102,241,.14);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: var(--muted);
+}
+.empty-title { font-size: 15px; font-weight: 600; color: var(--text-2); margin-bottom: 8px; }
+.empty-desc  { font-size: 12.5px; color: var(--muted); }
+.empty-link  { color: var(--accent); font-weight: 600; }
+
+/* ══ MODAL ═══════════════════════════════════════════ */
+.modal-backdrop {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    background: rgba(6,9,26,.72);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    align-items: center; justify-content: center;
+}
+.modal-backdrop.open { display: flex; }
+
+.modal-box {
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    border-radius: var(--r-xl);
+    width: 560px; max-width: 95vw;
+    box-shadow: 0 24px 64px rgba(0,0,0,.60), 0 0 0 1px rgba(99,102,241,.10);
+    overflow: hidden;
+    animation: modal-in .22s cubic-bezier(.4,0,.2,1) both;
+}
+@keyframes modal-in {
+    from { opacity: 0; transform: scale(.95) translateY(8px); }
+    to   { opacity: 1; transform: scale(1)  translateY(0); }
+}
+
+/* Modal top bar */
+.modal-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 24px; border-bottom: 1px solid var(--card-border);
+    background: linear-gradient(90deg, rgba(99,102,241,.06), rgba(59,130,246,.03));
+}
+.modal-topbar-left { display: flex; align-items: center; gap: 12px; }
+.modal-mod-icon {
+    width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+    background: rgba(99,102,241,.14); border: 1px solid rgba(99,102,241,.26);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: var(--accent);
+}
+.modal-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.modal-subtitle { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.modal-close-btn {
+    width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--card-border);
+    background: rgba(99,102,241,.04); color: var(--muted); font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .18s;
+}
+.modal-close-btn:hover { background: rgba(248,113,113,.10); border-color: rgba(248,113,113,.30); color: var(--r1); }
+
+/* Modal body */
+.modal-body { padding: 22px 24px; }
+
+/* Email tag */
+.modal-email-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(99,102,241,.08); border: 1px solid rgba(99,102,241,.22);
+    border-radius: 8px; padding: 8px 14px; font-size: 12.5px;
+    font-weight: 600; color: var(--accent); margin-bottom: 22px;
+    font-family: var(--font-mono);
+}
+.modal-email-tag i { font-size: 11px; color: var(--muted); }
+
+/* Section label */
+.modal-sec-label {
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--muted); margin-bottom: 10px;
+    display: flex; align-items: center; gap: 7px;
+}
+.modal-sec-label::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--card-border), transparent);
+}
+
+/* Current chips area */
+.modal-chips-area {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    min-height: 36px; margin-bottom: 20px;
+    padding: 10px 12px;
+    background: rgba(99,102,241,.03);
+    border: 1px solid var(--card-border);
+    border-radius: var(--r-sm);
+}
+
+/* Add table row */
+.add-table-row { display: flex; gap: 10px; align-items: center; margin-bottom: 4px; }
+.add-table-select {
+    flex: 1; padding: 9px 12px; border-radius: var(--r-sm);
+    border: 1px solid var(--card-border);
+    background: rgba(99,102,241,.04); color: var(--text);
+    font-size: 12.5px; font-family: var(--font-mono); outline: none;
+    transition: border-color .18s, box-shadow .18s;
+    -webkit-appearance: none; appearance: none;
+}
+.add-table-select:focus {
+    border-color: rgba(99,102,241,.50);
+    box-shadow: 0 0 0 3px rgba(99,102,241,.10);
+}
+.add-table-select option { background: var(--surface2); color: var(--text); }
+.add-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 16px; border-radius: var(--r-sm);
+    background: linear-gradient(135deg, var(--p1), var(--b1));
+    border: none; color: #fff; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: filter .18s, box-shadow .18s; font-family: var(--font);
+    box-shadow: 0 2px 10px rgba(99,102,241,.28); white-space: nowrap;
+}
+.add-btn:hover { filter: brightness(1.12); box-shadow: 0 4px 16px rgba(99,102,241,.38); }
+
+.no-tables-warn {
+    font-size: 11.5px; color: var(--r1); margin-top: 8px;
+    display: flex; align-items: center; gap: 6px;
+}
+
+/* Modal divider */
+.modal-divider { border: none; border-top: 1px solid var(--card-border); margin: 20px 0; }
+
+/* Modal footer */
+.modal-footer { display: flex; justify-content: flex-end; }
+.modal-close-action {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 18px; border-radius: var(--r-sm);
+    background: rgba(99,102,241,.07); border: 1px solid rgba(99,102,241,.22);
+    color: var(--text-2); font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all .18s; font-family: var(--font);
+}
+.modal-close-action:hover { background: rgba(99,102,241,.14); color: var(--text); }
+
+/* Professional registry polish */
+.as-header {
+    background: linear-gradient(180deg, rgba(255,255,255,.026), rgba(255,255,255,.01)), var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    align-items: center;
+}
+.as-title { font-size: 19px; letter-spacing: 0; }
+.as-sub { color: var(--text-2); line-height: 1.55; max-width: 720px; }
+.as-action-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    background: rgba(148,163,184,.06);
+    color: var(--text);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+}
+.stats-strip { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.stat-box {
+    border-radius: 8px;
+    padding: 16px;
+    transform: none;
+    box-shadow: none;
+    background: linear-gradient(180deg, rgba(255,255,255,.022), rgba(255,255,255,.01)), var(--card-bg);
+}
+.stat-box:hover { transform: none; border-color: rgba(148,163,184,.28); }
+.stat-box::before {
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: auto;
+    width: 3px;
+    height: auto;
+    border-radius: 8px 0 0 8px;
+    background: rgba(33,212,253,.58);
+}
+.sb-active::before { background: rgba(34,197,94,.66); }
+.sb-inactive::before { background: rgba(248,113,113,.66); }
+.sb-tables::before { background: rgba(96,165,250,.66); }
+.stat-icon {
+    border-radius: 8px;
+    background: rgba(148,163,184,.08);
+    color: var(--text-2);
+    border-color: var(--card-border);
+}
+.stat-num {
+    color: var(--text) !important;
+    font-family: var(--font-mono);
+    font-size: 25px;
+    letter-spacing: 0;
+}
+.tbl-card { border-radius: 12px; }
+.tbl-card-header { padding: 16px 18px; }
+.tbl-header-icon {
+    background: rgba(148,163,184,.08);
+    border-color: var(--card-border);
+    color: var(--text-2);
+}
+.senders-tbl th {
+    background: rgba(148,163,184,.045);
+    color: var(--muted);
+    border-bottom: 1px solid var(--card-border);
+}
+.senders-tbl tbody tr,
+.senders-tbl tbody tr:nth-child(odd) td {
+    background: transparent;
+}
+.senders-tbl tbody tr:hover td,
+.senders-tbl tbody tr:nth-child(odd):hover td {
+    background: rgba(148,163,184,.055);
+}
+.senders-tbl tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 rgba(33,212,253,.58); }
+.sender-avatar {
+    border-radius: 9px;
+    background: rgba(148,163,184,.08);
+    border-color: var(--card-border);
+    color: var(--text);
+    box-shadow: none;
+}
+.sender-row:hover .sender-avatar {
+    box-shadow: none;
+    border-color: rgba(33,212,253,.28);
+}
+.db-chip {
+    background: rgba(33,212,253,.07);
+    border-color: rgba(33,212,253,.18);
+    color: var(--text-2);
+    font-family: var(--font);
+}
+.status-badge { border-radius: 8px; }
+.bdot-on { animation: none; box-shadow: none; }
+.act-btn { border-radius: 8px; box-shadow: none !important; }
+.act-manage,
+.act-manage:hover {
+    background: rgba(33,212,253,.07);
+    border-color: rgba(33,212,253,.22);
+    color: var(--text);
+}
+.act-activate,
+.act-activate:hover {
+    background: rgba(34,197,94,.08);
+    border-color: rgba(34,197,94,.24);
+    color: var(--green);
+}
+.act-deactivate,
+.act-deactivate:hover {
+    background: rgba(248,113,113,.08);
+    border-color: rgba(248,113,113,.24);
+    color: var(--danger);
+}
+.modal-box {
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.45);
+}
+.modal-topbar {
+    background: rgba(148,163,184,.04);
+}
+.modal-mod-icon {
+    background: rgba(148,163,184,.08);
+    border-color: var(--card-border);
+    color: var(--text-2);
+}
+
+@media (max-width: 980px) {
+    .as-add-form { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Compute stats ───────────────────────────────────── #}
+{% set total_count  = rows | length %}
+{% set active_count = rows | selectattr('is_active') | list | length %}
+{% set off_count    = total_count - active_count %}
+{% set table_count  = namespace(v=0) %}
+{% for r in rows %}{% set table_count.v = table_count.v + (r.tables | length) %}{% endfor %}
+
+<!-- ══ PAGE HEADER ══════════════════════════════════ -->
+<div class="as-header">
+    <div>
+        <div class="as-title">Approved Senders</div>
+        <div class="as-sub">Each sender can have multiple inventory tables assigned. The agent queries those sources when preparing approved replies.</div>
+    </div>
+    <div class="as-actions">
+        <a class="as-action-link" href="{{ url_for('email_agent.unregistered') }}">
+            <i class="fas fa-user-plus"></i> Review Senders
+        </a>
+        <a class="as-action-link" href="{{ url_for('email_agent.inbox') }}">
+            <i class="fas fa-inbox"></i> Inbox
+        </a>
+    </div>
+</div>
+
+<!-- ══ STATS STRIP ══════════════════════════════════ -->
+{% if can_manage_senders %}
+<div class="as-add-card">
+    <div class="as-add-title">
+        <i class="fas fa-user-plus" style="color:var(--green)"></i>
+        <span>Add Approved Sender</span>
+    </div>
+    <form class="as-add-form" method="POST" action="{{ url_for('email_agent.approved_sender_add') }}">
+        <div class="as-field">
+            <label for="sender_email">Sender Email</label>
+            <input class="as-input" id="sender_email" name="sender_email" type="email" placeholder="buyer@example.com" required>
+        </div>
+        <div class="as-field">
+            <label for="sender_name">Sender Name</label>
+            <input class="as-input" id="sender_name" name="sender_name" placeholder="Optional name">
+        </div>
+        {% if is_super_admin %}
+        <div class="as-field">
+            <label for="org_id">Organization</label>
+            <select class="as-select" id="org_id" name="org_id" required>
+                <option value="">Select organization</option>
+                {% for org in organizations %}
+                <option value="{{ org.id }}">{{ org.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% else %}
+        <input type="hidden" name="org_id" value="{{ current_user.org_id }}">
+        {% endif %}
+        <button class="as-submit-btn" type="submit">
+            <i class="fas fa-plus"></i> Add Sender
+        </button>
+    </form>
+</div>
+{% endif %}
+
+<div class="stats-strip">
+    <div class="stat-box sb-total">
+        <div class="stat-icon si-violet"><i class="fas fa-users"></i></div>
+        <div>
+            <div class="stat-num" style="color:var(--accent)">{{ total_count }}</div>
+            <div class="stat-lbl">Total Senders</div>
+        </div>
+    </div>
+    <div class="stat-box sb-active">
+        <div class="stat-icon si-green"><i class="fas fa-circle-check"></i></div>
+        <div>
+            <div class="stat-num" style="color:var(--g1)">{{ active_count }}</div>
+            <div class="stat-lbl">Active</div>
+        </div>
+    </div>
+    <div class="stat-box sb-inactive">
+        <div class="stat-icon si-red"><i class="fas fa-circle-xmark"></i></div>
+        <div>
+            <div class="stat-num" style="color:var(--r1)">{{ off_count }}</div>
+            <div class="stat-lbl">Inactive</div>
+        </div>
+    </div>
+    <div class="stat-box sb-tables">
+        <div class="stat-icon si-blue"><i class="fas fa-database"></i></div>
+        <div>
+            <div class="stat-num" style="color:var(--b2)">{{ table_count.v }}</div>
+            <div class="stat-lbl">Table Assignments</div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ TABLE CARD ══════════════════════════════════ -->
+<div class="tbl-card">
+    <div class="tbl-card-header">
+        <div class="tbl-header-left">
+            <div class="tbl-header-icon"><i class="fas fa-circle-check"></i></div>
+            <span class="tbl-header-title">Sender Registry</span>
+            {% if total_count %}
+            <span class="count-pill">{{ total_count }} senders</span>
+            {% endif %}
+        </div>
+        {% if total_count %}
+        <div class="search-wrap">
+            <i class="fas fa-search"></i>
+            <input class="search-input" id="senderSearch" type="text" placeholder="Search senders...">
+        </div>
+        {% endif %}
+    </div>
+
+    {% if rows %}
+    <div class="tbl-scroll">
+        <table class="senders-tbl" id="sendersTable">
+            <thead>
+                <tr>
+                    <th>Sender</th>
+                    <th>Inventory Tables</th>
+                    <th>Status</th>
+                    <th>Added</th>
+                    {% if can_manage_senders %}<th>Actions</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rows %}
+                <tr class="sender-row">
+                    <!-- Sender cell with avatar -->
+                    <td>
+                        <div class="sender-cell">
+                            <div class="sender-avatar">
+                                {{ (r.sender_name or r.sender_email or '?')[0] | upper }}
+                            </div>
+                            <div>
+                                <div class="sender-email">{{ r.sender_email }}</div>
+                                <div class="sender-name">{{ r.sender_name or 'No name' }}</div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Table chips -->
+                    <td>
+                        {% if r.tables %}
+                        <div class="chip-list">
+                            {% for t in r.tables %}
+                            <span class="db-chip">
+                                <i class="fas fa-table" style="font-size:9px;opacity:.7"></i>
+                                {{ t }}
+                                {% if can_manage_senders %}
+                                <form method="POST"
+                                    action="{{ url_for('email_agent.sender_table_remove', sender_id=r.id) }}"
+                                    class="act-form" style="display:inline">
+                                    <input type="hidden" name="table_name" value="{{ t }}">
+                                    <button type="submit" class="db-chip-remove"
+                                        title="Remove {{ t }}"
+                                        onclick="return confirm('Remove table \'{{ t }}\' from {{ r.sender_email }}?')">
+                                        <i class="fas fa-xmark"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <span class="chip-none-text"><i class="fas fa-minus" style="font-size:9px;margin-right:4px"></i>No tables - uses default</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Status -->
+                    <td>
+                        {% if r.is_active %}
+                        <span class="status-badge badge-on">
+                            <span class="badge-dot bdot-on"></span> Active
+                        </span>
+                        {% else %}
+                        <span class="status-badge badge-off">
+                            <span class="badge-dot bdot-off"></span> Inactive
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Date -->
+                    <td class="date-cell">
+                        {% if r.created_at %}
+                            {{ r.created_at.strftime('%d %b %Y') if r.created_at.strftime is defined else r.created_at }}
+                        {% else %}-{% endif %}
+                    </td>
+
+                    <!-- Actions -->
+                    {% if can_manage_senders %}
+                    <td>
+                        <div class="action-cell">
+                            {% if can_manage_senders %}
+                            <button type="button"
+                                class="act-btn act-manage js-manage-tables"
+                                data-id="{{ r.id }}"
+                                data-email="{{ r.sender_email }}"
+                                data-tables="{{ r.tables | join(',') }}">
+                                <i class="fas fa-database"></i> Manage Tables
+                            </button>
+                            {% endif %}
+                            {% if is_super_admin %}
+                            <form method="POST"
+                                action="{{ url_for('email_agent.toggle_sender', sender_id=r.id) }}"
+                                class="act-form">
+                                {% if r.is_active %}
+                                <button type="submit" class="act-btn act-deactivate"
+                                    onclick="return confirm('Deactivate {{ r.sender_email }}?')">
+                                    <i class="fas fa-ban"></i> Deactivate
+                                </button>
+                                {% else %}
+                                <button type="submit" class="act-btn act-activate">
+                                    <i class="fas fa-circle-check"></i> Activate
+                                </button>
+                                {% endif %}
+                            </form>
+                            {% endif %}
+                            <form method="POST"
+                                action="{{ url_for('email_agent.approved_sender_delete', sender_id=r.id) }}"
+                                class="act-form">
+                                <button type="submit" class="act-btn act-delete"
+                                    onclick="return confirm('Delete {{ r.sender_email }} from approved senders? This will also remove assigned tables.')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    <div class="empty-wrap">
+        <div class="empty-icon-ring"><i class="fas fa-user-slash"></i></div>
+        <div class="empty-title">No approved senders yet</div>
+        <div class="empty-desc">
+            Approve senders from the
+            <a href="{{ url_for('email_agent.unregistered') }}" class="empty-link">Unregistered Senders</a>
+            list. Once approved, they can receive AI-generated replies.
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if can_manage_senders %}
+<!-- ══ MANAGE TABLES MODAL ══════════════════════════ -->
+<div class="modal-backdrop" id="tablesModal">
+    <div class="modal-box">
+
+        <!-- Modal top bar -->
+        <div class="modal-topbar">
+            <div class="modal-topbar-left">
+                <div class="modal-mod-icon"><i class="fas fa-database"></i></div>
+                <div>
+                    <div class="modal-title">Manage Inventory Tables</div>
+                    <div class="modal-subtitle">Assign or remove data sources for this sender</div>
+                </div>
+            </div>
+            <button type="button" class="modal-close-btn" id="closeTablesModal" title="Close">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Modal body -->
+        <div class="modal-body">
+
+            <!-- Sender indicator -->
+            <div class="modal-email-tag" id="modalEmailTag">
+                <i class="fas fa-user"></i> -
+            </div>
+
+            <!-- Current tables -->
+            <div class="modal-sec-label"><i class="fas fa-layer-group" style="color:var(--accent)"></i> Assigned Tables</div>
+            <div class="modal-chips-area" id="modalCurrentChips">
+                <span class="chip-none-text">None assigned - uses default upload batch</span>
+            </div>
+
+            <hr class="modal-divider">
+
+            <!-- Add a table -->
+            <div class="modal-sec-label"><i class="fas fa-plus" style="color:var(--g1)"></i> Add a Table</div>
+            <form method="POST" id="addTableForm" action="">
+                <div class="add-table-row">
+                    <select name="table_name" id="addTableSelect" class="add-table-select">
+                        <option value="">- select a table -</option>
+                        {% for t in available_tables %}
+                        <option value="{{ t.table }}">{{ t.schema }}.{{ t.table }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="add-btn">
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                </div>
+                {% if not available_tables %}
+                <div class="no-tables-warn">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    No tables found on the connected server.
+                </div>
+                {% endif %}
+            </form>
+
+            <hr class="modal-divider">
+
+            <div class="modal-footer">
+                <button type="button" class="modal-close-action" id="closeTablesModal2">
+                    <i class="fas fa-check"></i> Done
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ── Search ──────────────────────────────────────────── */
+var searchInput = document.getElementById('senderSearch');
+if (searchInput) {
+    searchInput.addEventListener('input', function () {
+        var q = this.value.toLowerCase();
+        document.querySelectorAll('.sender-row').forEach(function (row) {
+            row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+    });
+}
+
+{% if can_manage_senders %}
+/* ── Modal logic ─────────────────────────────────────── */
+(function () {
+    var modal     = document.getElementById('tablesModal');
+    var emailTag  = document.getElementById('modalEmailTag');
+    var chipsWrap = document.getElementById('modalCurrentChips');
+    var addForm   = document.getElementById('addTableForm');
+    var addSelect = document.getElementById('addTableSelect');
+
+    var currentId = null;
+
+    function closeModal() { modal.classList.remove('open'); }
+    function openModal()  { modal.classList.add('open'); }
+
+    document.getElementById('closeTablesModal').addEventListener('click', closeModal);
+    document.getElementById('closeTablesModal2').addEventListener('click', closeModal);
+    modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeModal();
+    });
+
+    document.querySelectorAll('.js-manage-tables').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            currentId = btn.getAttribute('data-id');
+            var email  = btn.getAttribute('data-email');
+            var tables = btn.getAttribute('data-tables');
+
+            emailTag.innerHTML = '<i class="fas fa-user"></i> ' + email;
+            addForm.action = '/email-agent/approved-senders/' + currentId + '/tables/add';
+            addSelect.value = '';
+
+            /* rebuild chips */
+            chipsWrap.innerHTML = '';
+            var list = tables ? tables.split(',').filter(Boolean) : [];
+            if (list.length === 0) {
+                chipsWrap.innerHTML = '<span class="chip-none-text">None assigned - uses default upload batch</span>';
+            } else {
+                list.forEach(function (t) {
+                    var chip = document.createElement('span');
+                    chip.className = 'db-chip';
+                    chip.innerHTML =
+                        '<i class="fas fa-table" style="font-size:9px;opacity:.7"></i>' +
+                        '<span>' + t + '</span>';
+
+                    var rmBtn = document.createElement('button');
+                    rmBtn.type = 'button';
+                    rmBtn.className = 'db-chip-remove';
+                    rmBtn.title = 'Remove ' + t;
+                    rmBtn.innerHTML = '<i class="fas fa-xmark"></i>';
+                    rmBtn.addEventListener('click', function () {
+                        if (!confirm('Remove table \'' + t + '\' from this sender?')) return;
+                        var f = document.createElement('form');
+                        f.method = 'POST';
+                        f.action = '/email-agent/approved-senders/' + currentId + '/tables/remove';
+                        var inp = document.createElement('input');
+                        inp.type = 'hidden'; inp.name = 'table_name'; inp.value = t;
+                        f.appendChild(inp);
+                        document.body.appendChild(f);
+                        f.submit();
+                    });
+                    chip.appendChild(rmBtn);
+                    chipsWrap.appendChild(chip);
+                });
+            }
+
+            openModal();
+        });
+    });
+}());
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480">
+  <rect width="640" height="480" fill="#f2fbf5"/>
+  <rect x="120" y="70" width="400" height="340" rx="28" fill="#dcfce7"/>
+  <path d="M220 130l55-35h90l55 35 48 78-64 36-20-32v150H256V212l-20 32-64-36 48-78z" fill="#15803d" stroke="#bbf7d0" stroke-width="8"/>
+  <text x="320" y="430" text-anchor="middle" font-family="Arial" font-size="28" font-weight="700" fill="#14532d">JHA001-GRN</text>
+</svg>

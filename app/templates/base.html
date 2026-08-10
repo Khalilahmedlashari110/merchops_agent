@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+   
+<script>
+(function () {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    document.documentElement.style.backgroundColor =
+        savedTheme === 'light'
+            ? '#f8fafc'
+            : '#0b1020';
+})();
+</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MerchOps Agent{% endblock %}</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Robotics Control Panel Theme -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+<div class="page-loading-overlay" id="pageLoadingOverlay" aria-live="polite" aria-hidden="true">
+    <div class="page-loading-card">
+        <div class="page-loading-mark" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <div>
+            <div class="page-loading-title" id="pageLoadingTitle">Loading data</div>
+            <div class="page-loading-subtitle" id="pageLoadingSubtitle">Please wait while MerchOps prepares the page.</div>
+            <div class="page-loading-progress" aria-hidden="true">
+                <span id="pageLoadingProgressBar"></span>
+            </div>
+            <div class="page-loading-percent" id="pageLoadingPercent">0%</div>
+        </div>
+    </div>
+</div>
+<div class="app-shell">
+
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside class="sidebar">
+
+        <div class="brand">
+            <div class="brand-logo">M</div>
+            <div>
+                <div class="brand-name">MerchOps<br>Agent</div>
+                <div class="brand-sub">AI · Vision · Ops</div>
+            </div>
+        </div>
+
+        <div class="nav-scroll">
+            <div class="nav-group nav-group-expandable" data-nav-group="main">
+                <button type="button" class="nav-title nav-toggle" aria-expanded="true" aria-controls="nav-panel-main">
+                    <span>Main</span>
+                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                </button>
+                <div class="nav-panel" id="nav-panel-main">
+                <a class="nav-link {% if request.endpoint == 'dashboard.home' %}active{% endif %}"
+                   href="{{ url_for('dashboard.home') }}">
+                    <i class="fas fa-gauge-high"></i> Dashboard
+                </a>
+                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('inventory.') %}active{% endif %}"
+                   href="{{ url_for('inventory.index') }}">
+                    <i class="fas fa-boxes-stacked"></i> Inventory
+                </a>
+                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('ralawise.') %}active{% endif %}"
+                   href="{{ url_for('ralawise.index') }}">
+                    <i class="fas fa-shirt"></i> Ralawise Scraper
+                </a>
+                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('a4.') %}active{% endif %}"
+                   href="{{ url_for('a4.index') }}">
+                    <i class="fas fa-tags"></i> A4 Scraper
+                </a>
+                {% if current_user.is_authenticated and current_user.role_name == "super_admin" %}
+                <a class="nav-link {% if request.endpoint == 'organization.list_organizations' %}active{% endif %}"
+                   href="{{ url_for('organization.list_organizations') }}">
+                    <i class="fas fa-building"></i> Organizations
+                </a>
+                {% endif %}
+                {% if current_user.is_authenticated and current_user.role_name in ["super_admin","org_admin"] and current_user.org_id %}
+                <a class="nav-link {% if request.endpoint == 'organization.organization_users' %}active{% endif %}"
+                   href="{{ url_for('organization.organization_users', org_id=current_user.org_id) }}">
+                    <i class="fas fa-users"></i> Users
+                </a>
+                {% endif %}
+                </div>
+            </div>
+            <div class="nav-group nav-group-expandable" data-nav-group="email-ai">
+                <button type="button" class="nav-title nav-toggle" aria-expanded="true" aria-controls="nav-panel-email-ai">
+                    <span>Email AI</span>
+                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                </button>
+                <div class="nav-panel" id="nav-panel-email-ai">
+                <a class="nav-link {% if request.endpoint == 'email_agent.accounts' %}active{% endif %}"
+                   href="{{ url_for('email_agent.accounts') }}">
+                    <i class="fas fa-at"></i> Email Accounts
+                </a>
+                <a class="nav-link {% if request.endpoint == 'email_agent.unregistered' %}active{% endif %}"
+                   href="{{ url_for('email_agent.unregistered') }}">
+                    <i class="fas fa-user-slash"></i> Unregistered Users
+                </a>
+                <a class="nav-link {% if request.endpoint == 'email_agent.approved_senders' %}active{% endif %}"
+                   href="{{ url_for('email_agent.approved_senders') }}">
+                    <i class="fas fa-circle-check"></i> Approved Senders
+                </a>
+                <a class="nav-link {% if request.endpoint == 'email_agent.inbox' %}active{% endif %}"
+                   href="{{ url_for('email_agent.inbox') }}">
+                    <i class="fas fa-inbox"></i> AI Email Inbox
+                </a>
+                <a class="nav-link {% if request.endpoint == 'email_agent.drafts' %}active{% endif %}"
+                   href="{{ url_for('email_agent.drafts') }}">
+                    <i class="fas fa-file-lines"></i> Email Drafts
+                </a>
+                <a class="nav-link {% if request.endpoint == 'email_agent.monitor' %}active{% endif %}"
+                   href="{{ url_for('email_agent.monitor') }}">
+                    <i class="fas fa-chart-line"></i> Email Monitor
+                </a>
+                </div>
+                
+            </div>
+            <div class="nav-group nav-group-expandable" data-nav-group="chatbot">
+                <button type="button" class="nav-title nav-toggle" aria-expanded="true" aria-controls="nav-panel-chatbot">
+                    <span>Chatbot</span>
+                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                </button>
+                <div class="nav-panel" id="nav-panel-chatbot">
+                <a class="nav-link {% if request.endpoint == 'data_chatbot.index' %}active{% endif %}"
+                   href="{{ url_for('data_chatbot.index') }}">
+                    <i class="fas fa-comments"></i> Data Chatbot
+                </a>
+                {% if current_user.is_authenticated and current_user.role_name in ["super_admin","org_admin"] %}
+                <a class="nav-link {% if request.endpoint == 'data_chatbot.assignments' %}active{% endif %}"
+                   href="{{ url_for('data_chatbot.assignments') }}">
+                    <i class="fas fa-table-list"></i> Chatbot Assignments
+                </a>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Animated neural brain SVG — violet palette -->
+        <div class="sidebar-brain" aria-hidden="true">
+            <svg width="210" height="196" viewBox="0 0 220 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="32"  cy="65"  r="2"   fill="#1e1260" opacity=".5"/>
+                <circle cx="29"  cy="128" r="2"   fill="#1e1260" opacity=".5"/>
+                <circle cx="188" cy="68"  r="2"   fill="#1e1260" opacity=".45"/>
+                <circle cx="186" cy="126" r="2"   fill="#1e1260" opacity=".45"/>
+                <circle cx="110" cy="12"  r="1.8" fill="#1e1260" opacity=".40"/>
+                <circle cx="110" cy="180" r="1.8" fill="#1e1260" opacity=".40"/>
+                <circle cx="14"  cy="96"  r="1.5" fill="#1e1260" opacity=".35"/>
+                <circle cx="206" cy="96"  r="1.5" fill="#1e1260" opacity=".35"/>
+                <circle cx="110" cy="34"  r="2.5" fill="#4535a8" opacity=".55"/>
+                <circle cx="156" cy="52"  r="2.5" fill="#4535a8" opacity=".55"/>
+                <circle cx="170" cy="96"  r="2.5" fill="#4535a8" opacity=".55"/>
+                <circle cx="156" cy="140" r="2.5" fill="#4535a8" opacity=".55"/>
+                <circle cx="110" cy="158" r="2.5" fill="#4535a8" opacity=".55"/>
+                <circle cx="64"  cy="140" r="2.5" fill="#4535a8" opacity=".55"/>
+                <circle cx="50"  cy="96"  r="2.5" fill="#4535a8" opacity=".55"/>
+                <circle cx="64"  cy="52"  r="2.5" fill="#4535a8" opacity=".55"/>
+                <circle cx="110" cy="62"  r="3.2" fill="#7F77DD" opacity=".78"/>
+                <circle cx="138" cy="76"  r="3.2" fill="#7F77DD" opacity=".72"/>
+                <circle cx="138" cy="116" r="3.2" fill="#7F77DD" opacity=".72"/>
+                <circle cx="110" cy="130" r="3.2" fill="#7F77DD" opacity=".78"/>
+                <circle cx="82"  cy="116" r="3.2" fill="#7F77DD" opacity=".72"/>
+                <circle cx="82"  cy="76"  r="3.2" fill="#7F77DD" opacity=".72"/>
+                <circle cx="110" cy="96"  r="5.5" fill="#9690e8" opacity=".96"/>
+                <g stroke="#2d1f7a" stroke-width=".6" opacity=".24">
+                    <line x1="110" y1="34"  x2="110" y2="12"/>
+                    <line x1="110" y1="158" x2="110" y2="180"/>
+                    <line x1="50"  y1="96"  x2="14"  y2="96"/>
+                    <line x1="170" y1="96"  x2="206" y2="96"/>
+                    <line x1="64"  y1="52"  x2="32"  y2="65"/>
+                    <line x1="64"  y1="140" x2="29"  y2="128"/>
+                    <line x1="156" y1="52"  x2="188" y2="68"/>
+                    <line x1="156" y1="140" x2="186" y2="126"/>
+                    <line x1="110" y1="34"  x2="64"  y2="52"/>
+                    <line x1="110" y1="34"  x2="156" y2="52"/>
+                    <line x1="156" y1="52"  x2="170" y2="96"/>
+                    <line x1="170" y1="96"  x2="156" y2="140"/>
+                    <line x1="156" y1="140" x2="110" y2="158"/>
+                    <line x1="110" y1="158" x2="64"  y2="140"/>
+                    <line x1="64"  y1="140" x2="50"  y2="96"/>
+                    <line x1="50"  y1="96"  x2="64"  y2="52"/>
+                </g>
+                <g stroke="#5548cc" stroke-width=".7" opacity=".30">
+                    <line x1="110" y1="62"  x2="110" y2="34"/>
+                    <line x1="110" y1="62"  x2="156" y2="52"/>
+                    <line x1="138" y1="76"  x2="156" y2="52"/>
+                    <line x1="138" y1="76"  x2="170" y2="96"/>
+                    <line x1="138" y1="116" x2="170" y2="96"/>
+                    <line x1="138" y1="116" x2="156" y2="140"/>
+                    <line x1="110" y1="130" x2="156" y2="140"/>
+                    <line x1="110" y1="130" x2="110" y2="158"/>
+                    <line x1="82"  y1="116" x2="110" y2="158"/>
+                    <line x1="82"  y1="116" x2="64"  y2="140"/>
+                    <line x1="82"  y1="76"  x2="64"  y2="52"/>
+                    <line x1="82"  y1="76"  x2="50"  y2="96"/>
+                    <line x1="64"  y1="52"  x2="110" y2="34"/>
+                    <line x1="50"  y1="96"  x2="29"  y2="128"/>
+                    <line x1="50"  y1="96"  x2="32"  y2="65"/>
+                </g>
+                <g stroke="#7F77DD" stroke-width="1" opacity=".40">
+                    <line x1="110" y1="96" x2="110" y2="62"/>
+                    <line x1="110" y1="96" x2="138" y2="76"/>
+                    <line x1="110" y1="96" x2="138" y2="116"/>
+                    <line x1="110" y1="96" x2="110" y2="130"/>
+                    <line x1="110" y1="96" x2="82"  y2="116"/>
+                    <line x1="110" y1="96" x2="82"  y2="76"/>
+                    <line x1="110" y1="62" x2="138" y2="76"/>
+                    <line x1="138" y1="76" x2="138" y2="116"/>
+                    <line x1="138" y1="116" x2="110" y2="130"/>
+                    <line x1="110" y1="130" x2="82"  y2="116"/>
+                    <line x1="82"  y1="116" x2="82"  y2="76"/>
+                    <line x1="82"  y1="76"  x2="110" y2="62"/>
+                </g>
+                <!-- Pulse ring -->
+                <circle cx="110" cy="96" r="10" stroke="#7F77DD" stroke-width="1" fill="none" opacity=".18">
+                    <animate attributeName="r"       values="10;22;10"  dur="3.4s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity"  values=".18;0;.18" dur="3.4s" repeatCount="indefinite"/>
+                </circle>
+                <!-- Centre node pulse -->
+                <circle cx="110" cy="96" r="5.5" fill="#9690e8" opacity=".96">
+                    <animate attributeName="opacity" values=".96;.38;.96" dur="2.2s" repeatCount="indefinite"/>
+                </circle>
+                <!-- Signal particles -->
+                <circle r="2.2" fill="#7F77DD" opacity=".78">
+                    <animateMotion dur="2.4s" repeatCount="indefinite" path="M110,96 L110,62"/>
+                    <animate attributeName="opacity" values=".78;0" dur="2.4s" repeatCount="indefinite"/>
+                </circle>
+                <circle r="2.2" fill="#7F77DD" opacity=".72">
+                    <animateMotion dur="2.8s" repeatCount="indefinite" begin="0.7s" path="M110,96 L138,116"/>
+                    <animate attributeName="opacity" values=".72;0" dur="2.8s" repeatCount="indefinite" begin="0.7s"/>
+                </circle>
+                <circle r="2.2" fill="#7F77DD" opacity=".62">
+                    <animateMotion dur="3.1s" repeatCount="indefinite" begin="1.4s" path="M110,96 L82,76"/>
+                    <animate attributeName="opacity" values=".62;0" dur="3.1s" repeatCount="indefinite" begin="1.4s"/>
+                </circle>
+                <circle r="2" fill="#1D9E75" opacity=".6">
+                    <animateMotion dur="3.5s" repeatCount="indefinite" begin="0.3s" path="M110,96 L170,96"/>
+                    <animate attributeName="opacity" values=".6;0" dur="3.5s" repeatCount="indefinite" begin="0.3s"/>
+                </circle>
+            </svg>
+        </div>
+
+    </aside>
+
+    <!-- Mobile sidebar backdrop -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- ═══ MAIN ═══ -->
+    <main class="main">
+
+        <!-- TOP BAR -->
+        <div class="topbar">
+            <div class="topbar-left">
+                <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <h1>{% block page_title %}MerchOps Agent{% endblock %}</h1>
+                    <p>{% block page_subtitle %}AI-powered operations intelligence — Email · Inventory · Sender Network{% endblock %}</p>
+                </div>
+            </div>
+
+            <div class="topbar-right">
+
+                <!-- Live agent status pulse -->
+                <div class="agent-status-pill" title="Email AI agent is active and polling">
+                    <span class="status-pulse-dot"></span>
+                    <span>Agent Online</span>
+                </div>
+
+                <!-- ── Notification bell (authenticated only) ─── -->
+                {% if current_user.is_authenticated %}
+                <div class="notif-wrap">
+                    <button type="button" class="t-icon-btn notif-bell" id="notifBell" title="Email Notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="notif-badge" id="notifBadge">0</span>
+                    </button>
+                    <div class="notif-dropdown" id="notifDropdown">
+                        <div class="nd-header">
+                            <span class="nd-title"><i class="fas fa-envelope"></i> Email Notifications</span>
+                            <button type="button" class="nd-mark-read" id="ndMarkRead">Mark all read</button>
+                        </div>
+                        <div class="nd-list" id="ndList">
+                            <div class="nd-empty">
+                                <i class="fas fa-bell-slash"></i>
+                                <div class="nd-empty-text">No recent emails</div>
+                            </div>
+                        </div>
+                        <div class="nd-footer">
+                            <a href="{{ url_for('email_agent.inbox') }}"><i class="fas fa-inbox"></i> View all in AI Inbox</a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="t-icon-btn theme-toggle" id="themeToggle" title="Toggle dark/light mode">
+                    <i class="fas fa-sun icon-sun"></i>
+                    <i class="fas fa-moon icon-moon"></i>
+                </div>
+
+                {% if current_user.is_authenticated %}
+                <div class="user-badge">
+                    <div class="user-avatar">{{ current_user.full_name[:2]|upper }}</div>
+                    {{ current_user.full_name }} ({{ current_user.username }})
+                </div>
+                <a class="btn btn-outline btn-sm" href="{{ url_for('auth.logout') }}">
+                    <i class="fas fa-right-from-bracket"></i> Logout
+                </a>
+                {% else %}
+                <a class="btn btn-outline btn-sm" href="{{ url_for('auth.login') }}">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </a>
+                {% endif %}
+
+            </div>
+        </div>
+
+        <!-- PAGE CONTENT -->
+        <div class="page-content">
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">
+                    <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}triangle-exclamation{% else %}info-circle{% endif %}"></i>
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <div class="container-card">
+                {% block content %}{% endblock %}
+            </div>
+
+        </div><!-- /page-content -->
+
+    </main>
+</div><!-- /app-shell -->
+
+<div id="__ai-toast"></div>
+
+<!-- Robotics Theme JS (theme toggle, counters, animations) -->
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+{% block extra_js %}{% endblock %}
+
+<!-- ── Notification Bell (authenticated only) ───────────── -->
+{% if current_user.is_authenticated %}
+<script>
+(function () {
+    var bell     = document.getElementById('notifBell');
+    var dropdown = document.getElementById('notifDropdown');
+    var badge    = document.getElementById('notifBadge');
+    var list     = document.getElementById('ndList');
+    var markBtn  = document.getElementById('ndMarkRead');
+    if (!bell) return;
+
+    var LS_KEY = 'notif_last_seen';
+
+    function getLastSeen() {
+        try { return parseInt(localStorage.getItem(LS_KEY) || '0', 10); } catch(e) { return 0; }
+    }
+    function setLastSeen() {
+        try { localStorage.setItem(LS_KEY, Date.now()); } catch(e) {}
+    }
+
+    function relTime(iso) {
+        var diff = Date.now() - new Date(iso).getTime();
+        if (diff < 60000)          return 'just now';
+        if (diff < 3600000)        return Math.round(diff/60000) + 'm ago';
+        if (diff < 86400000)       return Math.round(diff/3600000) + 'h ago';
+        if (diff < 172800000)      return 'yesterday';
+        return Math.round(diff/86400000) + 'd ago';
+    }
+
+    function render(rows) {
+        var lastSeen = getLastSeen();
+        var unread = 0;
+
+        if (!rows || rows.length === 0) {
+            list.innerHTML = '<div class="nd-empty"><i class="fas fa-bell-slash"></i><div class="nd-empty-text">No recent emails</div></div>';
+            badge.classList.remove('visible');
+            return;
+        }
+
+        var html = '';
+        rows.forEach(function (r) {
+            var ts = new Date(r.created_at).getTime();
+            var isNew = ts > lastSeen;
+            if (isNew) unread++;
+            var letter = (r.sender_email || '?')[0].toUpperCase();
+            var isInv  = r.detected_intent === 'data_request';
+            html += '<div class="nd-item' + (isNew ? ' nd-unread' : '') + '">';
+            html += '<div class="nd-avatar' + (isInv ? ' inv' : '') + '">' + letter + '</div>';
+            html += '<div class="nd-body">';
+            html += '<div class="nd-subject">' + (r.subject_line || '(No Subject)') + '</div>';
+            html += '<div class="nd-from">' + (r.sender_email || '') + '</div>';
+            html += '<div class="nd-actions">';
+            html += '<a class="nd-btn nd-btn-open" href="/email-agent/inbox"><i class="fas fa-inbox"></i> Inbox</a>';
+            if (r.draft_id) {
+                html += '<a class="nd-btn nd-btn-draft" href="/email-agent/drafts/' + r.draft_id + '"><i class="fas fa-file-lines"></i> Draft</a>';
+            }
+            html += '</div></div>';
+            html += '<div class="nd-time">' + relTime(r.created_at) + '</div>';
+            html += '</div>';
+        });
+        list.innerHTML = html;
+
+        if (unread > 0) {
+            badge.textContent = unread > 9 ? '9+' : String(unread);
+            badge.classList.add('visible');
+        } else {
+            badge.classList.remove('visible');
+        }
+    }
+
+    function fetchNotifications() {
+        fetch('/email-agent/notifications/json')
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) { if (d) render(d.recent); })
+            .catch(function () {});
+    }
+
+    /* Toggle dropdown */
+    bell.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var isOpen = dropdown.classList.toggle('open');
+        if (isOpen) {
+            setLastSeen();
+            badge.classList.remove('visible');
+        }
+    });
+
+    /* Mark all read */
+    if (markBtn) {
+        markBtn.addEventListener('click', function () {
+            setLastSeen();
+            badge.classList.remove('visible');
+            document.querySelectorAll('.nd-item.nd-unread').forEach(function (el) {
+                el.classList.remove('nd-unread');
+            });
+        });
+    }
+
+    /* Close when clicking outside */
+    document.addEventListener('click', function (e) {
+        if (!bell.closest('.notif-wrap').contains(e.target)) {
+            dropdown.classList.remove('open');
+        }
+    });
+
+    /* Initial fetch + poll every 60s */
+    fetchNotifications();
+    setInterval(fetchNotifications, 60000);
+}());
+</script>
+{% endif %}
+</body>
+</html>

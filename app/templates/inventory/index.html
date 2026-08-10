@@ -1,0 +1,802 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory Dashboard | MerchOps AI{% endblock %}
+{% block page_title %}Inventory Dashboard{% endblock %}
+{% block page_subtitle %}Interactive catalog, stock, sales velocity, and risk intelligence.{% endblock %}
+
+{% block extra_css %}
+<style>
+.inventory-page { display: flex; flex-direction: column; gap: 16px; }
+.inventory-toolbar {
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+    align-items: end;
+}
+.field label {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.field input,
+.field select {
+    width: 100%;
+    background: rgba(148,163,184,.06);
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 10px;
+    font: inherit;
+    font-size: 12px;
+}
+.inventory-button {
+    border: 1px solid rgba(34,197,94,.24);
+    background: rgba(34,197,94,.1);
+    color: var(--green);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    min-height: 38px;
+}
+.inventory-button:hover { background: rgba(34,197,94,.16); }
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+}
+.metric-card {
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: left;
+    cursor: pointer;
+    min-height: 104px;
+    transition: transform .12s ease, border-color .12s ease, background .12s ease;
+}
+.metric-card:hover,
+.metric-card:focus {
+    transform: translateY(-1px);
+    border-color: rgba(34,197,94,.32);
+    background: rgba(34,197,94,.045);
+    outline: none;
+}
+.metric-card strong {
+    display: block;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 24px;
+    line-height: 1.05;
+}
+.metric-card span {
+    display: block;
+    color: var(--muted);
+    margin-top: 8px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+.metric-card small {
+    display: block;
+    color: var(--text-2);
+    margin-top: 8px;
+    font-size: 11px;
+    line-height: 1.4;
+}
+.metric-card.is-risk { border-color: rgba(248,113,113,.26); }
+.metric-card.is-risk:hover { background: rgba(248,113,113,.055); }
+.analysis-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, .8fr) minmax(0, 1.2fr);
+    gap: 16px;
+}
+.panel {
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 16px;
+}
+.panel-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 13px;
+}
+.panel-title {
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 800;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.panel-title i { color: var(--accent); }
+.health-row { display: flex; gap: 16px; align-items: center; }
+.health-ring {
+    width: 112px;
+    height: 112px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    background:
+        radial-gradient(circle at center, var(--card-bg) 58%, transparent 59%),
+        conic-gradient(var(--green) calc(var(--score, 0) * 1%), rgba(148,163,184,.16) 0);
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    font-size: 24px;
+    font-weight: 900;
+    font-family: var(--font-mono);
+}
+.recommendations { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.recommendation {
+    border: 1px solid var(--card-border);
+    background: rgba(148,163,184,.04);
+    border-radius: 8px;
+    padding: 10px 11px;
+    color: var(--text-2);
+    font-size: 12px;
+    line-height: 1.5;
+}
+.split-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+.breakdown-list { display: flex; flex-direction: column; gap: 8px; }
+.breakdown-item {
+    width: 100%;
+    border: 1px solid var(--card-border);
+    background: rgba(148,163,184,.04);
+    border-radius: 8px;
+    padding: 10px 11px;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+}
+.breakdown-item:hover { border-color: rgba(33,212,253,.3); background: rgba(33,212,253,.045); }
+.breakdown-name {
+    color: var(--text);
+    font-weight: 800;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.breakdown-meta {
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 4px;
+}
+.breakdown-value {
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: 900;
+}
+.trend-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 230px;
+    gap: 14px;
+}
+.chart-box {
+    position: relative;
+    min-height: 300px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: rgba(148,163,184,.035);
+    padding: 10px;
+}
+.chart-box canvas {
+    width: 100%;
+    height: 280px;
+    display: block;
+    cursor: crosshair;
+}
+.trend-points { display: flex; flex-direction: column; gap: 8px; max-height: 302px; overflow: auto; }
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+.product-card {
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color .12s ease, transform .12s ease;
+}
+.product-card:hover { border-color: rgba(34,197,94,.3); transform: translateY(-1px); }
+.product-top { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 11px; align-items: center; }
+.product-image {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    background: rgba(148,163,184,.06);
+    object-fit: cover;
+}
+.product-title {
+    color: var(--text);
+    font-weight: 900;
+    font-size: 13px;
+    line-height: 1.3;
+    margin: 0 0 4px;
+}
+.product-sub { color: var(--muted); font-size: 11px; line-height: 1.4; }
+.product-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+.mini-stat {
+    background: rgba(148,163,184,.045);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 8px;
+}
+.mini-stat strong { color: var(--text); display: block; font-family: var(--font-mono); }
+.mini-stat span { color: var(--muted); display: block; font-size: 9px; text-transform: uppercase; margin-top: 3px; }
+.risk-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 10px;
+    font-weight: 900;
+    margin-top: 9px;
+    border: 1px solid rgba(34,197,94,.24);
+    color: var(--green);
+    background: rgba(34,197,94,.08);
+}
+.risk-pill.is-hot {
+    border-color: rgba(248,113,113,.28);
+    color: var(--danger);
+    background: rgba(248,113,113,.08);
+}
+.risk-pill.is-watch {
+    border-color: rgba(245,158,11,.28);
+    color: var(--amber);
+    background: rgba(245,158,11,.08);
+}
+.detail-modal-backdrop {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: var(--sidebar-w);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(4,8,18,.72);
+    z-index: 1200;
+    padding: 22px;
+}
+.detail-modal-backdrop.is-open { display: flex; }
+.detail-modal {
+    width: min(1120px, calc(100vw - var(--sidebar-w) - 44px));
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.45);
+}
+.detail-head {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--card-border);
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: flex-start;
+}
+.detail-title { color: var(--text); margin: 0; font-size: 16px; font-weight: 900; }
+.detail-subtitle { color: var(--muted); margin: 5px 0 0; font-size: 12px; line-height: 1.5; }
+.detail-close {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    background: rgba(148,163,184,.08);
+    color: var(--text);
+    cursor: pointer;
+}
+.detail-body { overflow: auto; padding: 0; }
+.detail-table { width: 100%; border-collapse: collapse; }
+.detail-table th,
+.detail-table td {
+    border-bottom: 1px solid var(--card-border);
+    padding: 11px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+    color: var(--text);
+    text-align: left;
+}
+.detail-table th {
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+.empty-box {
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 32px;
+    color: var(--muted);
+    text-align: center;
+}
+@media (max-width: 1280px) {
+    .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .inventory-toolbar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+    .analysis-grid, .trend-wrap, .split-grid { grid-template-columns: 1fr; }
+    .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .detail-modal-backdrop {
+        left: 0;
+        padding: 14px;
+    }
+    .detail-modal {
+        width: min(100%, calc(100vw - 28px));
+        max-height: 90vh;
+    }
+}
+@media (max-width: 620px) {
+    .summary-grid, .product-grid, .inventory-toolbar { grid-template-columns: 1fr; }
+    .health-row { flex-direction: column; align-items: flex-start; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% set summary = dashboard.summary %}
+<div class="inventory-page">
+    {% if error %}
+    <div class="empty-box"><i class="fas fa-triangle-exclamation"></i> {{ error }}</div>
+    {% endif %}
+
+    <form class="inventory-toolbar" method="get" id="inventoryFilters">
+        <div class="field">
+            <label>Snapshot</label>
+            <input type="date" name="snapshot" value="{{ dashboard.snapshot_date }}">
+        </div>
+        <div class="field">
+            <label>Brand</label>
+            <select name="brand">
+                <option value="">All brands</option>
+                {% for item in filter_options.brands %}
+                <option value="{{ item }}" {% if dashboard.filters.brand == item %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label>Category</label>
+            <select name="category">
+                <option value="">All categories</option>
+                {% for item in filter_options.categories %}
+                <option value="{{ item }}" {% if dashboard.filters.category == item %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label>Status</label>
+            <select name="status">
+                <option value="">All statuses</option>
+                {% for item in filter_options.statuses %}
+                <option value="{{ item }}" {% if dashboard.filters.status == item %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label>Warehouse</label>
+            <select name="warehouse">
+                <option value="">All warehouses</option>
+                {% for item in filter_options.warehouses %}
+                <option value="{{ item.code }}" {% if dashboard.filters.warehouse == item.code %}selected{% endif %}>{{ item.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button class="inventory-button" type="submit"><i class="fas fa-filter"></i> Apply</button>
+    </form>
+
+    <div class="summary-grid">
+        <button class="metric-card" type="button" data-detail-type="kpi" data-detail-value="available">
+            <strong>{{ summary.total_available|whole_number }}</strong>
+            <span>Available Units</span>
+            <small>{{ summary.total_reserved|whole_number }} reserved, {{ summary.total_in_transit|whole_number }} in transit</small>
+        </button>
+        <button class="metric-card" type="button" data-detail-type="kpi" data-detail-value="inventory_value">
+            <strong>${{ summary.inventory_value|whole_number }}</strong>
+            <span>Inventory Value</span>
+            <small>{{ summary.total_products|whole_number }} active catalog products</small>
+        </button>
+        <button class="metric-card is-risk" type="button" data-detail-type="kpi" data-detail-value="critical">
+            <strong>{{ summary.critical_count|whole_number }}</strong>
+            <span>Critical</span>
+            <small>At or below safety stock</small>
+        </button>
+        <button class="metric-card is-risk" type="button" data-detail-type="kpi" data-detail-value="reorder">
+            <strong>{{ summary.reorder_count|whole_number }}</strong>
+            <span>Reorder Risk</span>
+            <small>Below reorder point or velocity risk</small>
+        </button>
+        <button class="metric-card" type="button" data-detail-type="kpi" data-detail-value="overstock">
+            <strong>{{ summary.overstock_count|whole_number }}</strong>
+            <span>Overstock</span>
+            <small>Promotion and bundle candidates</small>
+        </button>
+        <button class="metric-card" type="button" data-detail-type="kpi" data-detail-value="sales_velocity">
+            <strong>{{ summary.sales_qty_90|whole_number }}</strong>
+            <span>90-Day Units Sold</span>
+            <small>{{ summary.avg_margin }}% blended margin</small>
+        </button>
+    </div>
+
+    <div class="analysis-grid">
+        <section class="panel">
+            <div class="panel-head">
+                <div class="panel-title"><i class="fas fa-gauge-high"></i> Inventory Health</div>
+                <span class="risk-pill {% if summary.health_score < 55 %}is-hot{% elif summary.health_score < 75 %}is-watch{% endif %}">
+                    {{ summary.health_score }} score
+                </span>
+            </div>
+            <div class="health-row">
+                <div class="health-ring" style="--score: {{ summary.health_score or 0 }}">{{ summary.health_score }}</div>
+                <div>
+                    <div class="product-title">Snapshot: {{ dashboard.snapshot_date }}</div>
+                    <div class="product-sub">Health blends healthy products, reorder exposure, overstock, and current risk count.</div>
+                    <div class="recommendations">
+                        {% for item in dashboard.recommendations %}
+                        <div class="recommendation">{{ item }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-head">
+                <div class="panel-title"><i class="fas fa-layer-group"></i> Clickable Analysis</div>
+                <span class="product-sub">Brand, category, and status drilldowns</span>
+            </div>
+            <div class="split-grid">
+                <div class="breakdown-list">
+                    {% for item in dashboard.brand_summary[:6] %}
+                    <button class="breakdown-item" type="button" data-detail-type="brand" data-detail-value="{{ item.name }}">
+                        <span>
+                            <span class="breakdown-name">{{ item.name }}</span>
+                            <span class="breakdown-meta">{{ item.count }} products · {{ item.risk_count }} at risk</span>
+                        </span>
+                        <span class="breakdown-value">{{ item.sales_qty_90|whole_number }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+                <div class="breakdown-list">
+                    {% for item in dashboard.category_summary[:6] %}
+                    <button class="breakdown-item" type="button" data-detail-type="category" data-detail-value="{{ item.name }}">
+                        <span>
+                            <span class="breakdown-name">{{ item.name }}</span>
+                            <span class="breakdown-meta">${{ item.inventory_value|whole_number }} value</span>
+                        </span>
+                        <span class="breakdown-value">{{ item.available|whole_number }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+                <div class="breakdown-list">
+                    {% for item in dashboard.status_summary[:6] %}
+                    <button class="breakdown-item" type="button" data-detail-type="status" data-detail-value="{{ item.name }}">
+                        <span>
+                            <span class="breakdown-name">{{ item.name }}</span>
+                            <span class="breakdown-meta">{{ item.count }} products</span>
+                        </span>
+                        <span class="breakdown-value">{{ item.available|whole_number }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <section class="panel">
+        <div class="panel-head">
+            <div>
+                <div class="panel-title"><i class="fas fa-chart-line"></i> Two-Year Inventory Trend</div>
+                <div class="product-sub">Click a chart point or month row to inspect product-level monthly aggregates.</div>
+            </div>
+            <span class="product-sub">Available units · inventory value · risk count</span>
+        </div>
+        <div class="trend-wrap">
+            <div class="chart-box"><canvas id="inventoryTrendChart"></canvas></div>
+            <div class="trend-points" id="trendPointList"></div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head">
+            <div>
+                <div class="panel-title"><i class="fas fa-shirt"></i> Product Intelligence</div>
+                <div class="product-sub">Every product card opens a detailed stock, catalog, and sales profile.</div>
+            </div>
+            <span class="product-sub">{{ dashboard.products|length }} visible products</span>
+        </div>
+        {% if dashboard.products %}
+        <div class="product-grid">
+            {% for p in dashboard.products %}
+            <button class="product-card" type="button" data-detail-type="sku" data-detail-value="{{ p.sku }}">
+                <div class="product-top">
+                    <img class="product-image" src="{{ p.image_url }}" alt="{{ p.image_alt }}">
+                    <div>
+                        <h3 class="product-title">{{ p.product_name }}</h3>
+                        <div class="product-sub">{{ p.brand }} · {{ p.category }} · {{ p.color_name }}</div>
+                    </div>
+                </div>
+                <span class="risk-pill {% if p.risk_score >= 70 %}is-hot{% elif p.risk_score >= 40 %}is-watch{% endif %}">
+                    {{ p.risk_level }} · {{ p.risk_score }}
+                </span>
+                <div class="product-stats">
+                    <div class="mini-stat"><strong>{{ p.available_qty|whole_number }}</strong><span>Available</span></div>
+                    <div class="mini-stat"><strong>{{ p.sales_qty_90|whole_number }}</strong><span>Sold 90D</span></div>
+                    <div class="mini-stat"><strong>{% if p.days_cover is not none %}{{ p.days_cover }}{% else %}N/A{% endif %}</strong><span>Cover Days</span></div>
+                </div>
+            </button>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-box">No inventory products match the selected filters.</div>
+        {% endif %}
+    </section>
+</div>
+
+<div class="detail-modal-backdrop" id="detailModal" aria-hidden="true">
+    <div class="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+        <div class="detail-head">
+            <div>
+                <h3 class="detail-title" id="detailTitle">Inventory Detail</h3>
+                <p class="detail-subtitle" id="detailSubtitle"></p>
+            </div>
+            <button class="detail-close" type="button" id="detailClose" aria-label="Close"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div class="detail-body" id="detailBody"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const trendData = {{ dashboard.trend | tojson }};
+
+function formatNumber(value, maximumFractionDigits = 0) {
+    const num = Number(value || 0);
+    return num.toLocaleString(undefined, { maximumFractionDigits });
+}
+
+function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = value == null ? '' : String(value);
+    return div.innerHTML;
+}
+
+function currentFilters() {
+    const form = document.getElementById('inventoryFilters');
+    const data = new FormData(form);
+    return {
+        snapshot: data.get('snapshot') || '',
+        brand_filter: data.get('brand') || '',
+        category_filter: data.get('category') || '',
+        status_filter: data.get('status') || '',
+        warehouse_filter: data.get('warehouse') || ''
+    };
+}
+
+async function openDetail(type, value) {
+    const modal = document.getElementById('detailModal');
+    const title = document.getElementById('detailTitle');
+    const subtitle = document.getElementById('detailSubtitle');
+    const body = document.getElementById('detailBody');
+    const params = new URLSearchParams({ type, value, ...currentFilters() });
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    title.textContent = 'Loading detail...';
+    subtitle.textContent = '';
+    body.innerHTML = '<div class="empty-box">Loading inventory rows...</div>';
+
+    try {
+        const res = await fetch(`/inventory/point-detail?${params.toString()}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Unable to load detail.');
+        title.textContent = data.title || 'Inventory Detail';
+        subtitle.textContent = `${data.subtitle || ''} ${formatNumber(data.row_count)} row(s).`;
+        body.innerHTML = renderDetailRows(data.rows || []);
+    } catch (err) {
+        title.textContent = 'Detail unavailable';
+        subtitle.textContent = err.message;
+        body.innerHTML = '<div class="empty-box">Could not load the selected inventory detail.</div>';
+    }
+}
+
+function renderDetailRows(rows) {
+    if (!rows.length) return '<div class="empty-box">No rows found for this point.</div>';
+    return `
+        <table class="detail-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Brand</th>
+                    <th>SKU</th>
+                    <th>Status</th>
+                    <th>Available</th>
+                    <th>Reserved</th>
+                    <th>In Transit</th>
+                    <th>Value</th>
+                    <th>90D Sold</th>
+                    <th>Cover Days</th>
+                    <th>Margin</th>
+                    <th>Risk</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows.map(row => `
+                    <tr>
+                        <td>${escapeHtml(row.product_name || row.style_code || '-')}</td>
+                        <td>${escapeHtml(row.brand || '-')}</td>
+                        <td>${escapeHtml(row.sku || '-')}</td>
+                        <td>${escapeHtml(row.stock_status || row.risk_level || '-')}</td>
+                        <td>${formatNumber(row.available_qty)}</td>
+                        <td>${formatNumber(row.reserved_qty)}</td>
+                        <td>${formatNumber(row.in_transit_qty)}</td>
+                        <td>$${formatNumber(row.inventory_value)}</td>
+                        <td>${formatNumber(row.sales_qty_90)}</td>
+                        <td>${row.days_cover == null ? 'N/A' : formatNumber(row.days_cover, 1)}</td>
+                        <td>${formatNumber(row.margin_pct, 1)}%</td>
+                        <td>${escapeHtml(row.risk_level || '-')}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function closeDetail() {
+    const modal = document.getElementById('detailModal');
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function drawTrend() {
+    const canvas = document.getElementById('inventoryTrendChart');
+    if (!canvas || !trendData.labels || !trendData.labels.length) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const width = rect.width;
+    const height = rect.height;
+    const pad = { top: 20, right: 24, bottom: 36, left: 58 };
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+    const maxAvailable = Math.max(...trendData.available, 1);
+    const maxRisk = Math.max(...trendData.risk, 1);
+    const points = [];
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.font = '11px Inter, sans-serif';
+    for (let i = 0; i <= 4; i += 1) {
+        const y = pad.top + plotH * i / 4;
+        ctx.strokeStyle = 'rgba(148,163,184,.15)';
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(width - pad.right, y);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(203,213,225,.72)';
+        ctx.textAlign = 'right';
+        ctx.fillText(formatNumber(maxAvailable - maxAvailable * i / 4), pad.left - 9, y + 4);
+    }
+
+    function plotLine(values, color, scaleMax, radius) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.3;
+        ctx.beginPath();
+        values.forEach((value, index) => {
+            const x = trendData.labels.length === 1 ? pad.left + plotW / 2 : pad.left + plotW * index / (trendData.labels.length - 1);
+            const y = pad.top + plotH - ((Number(value) || 0) / scaleMax * plotH);
+            if (index === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+            points.push({ x, y, key: trendData.keys[index], label: trendData.labels[index] });
+        });
+        ctx.stroke();
+        values.forEach((value, index) => {
+            const x = trendData.labels.length === 1 ? pad.left + plotW / 2 : pad.left + plotW * index / (trendData.labels.length - 1);
+            const y = pad.top + plotH - ((Number(value) || 0) / scaleMax * plotH);
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+
+    plotLine(trendData.available, '#22c55e', maxAvailable, 3.5);
+    plotLine(trendData.risk, '#f59e0b', maxRisk, 3);
+
+    trendData.labels.forEach((label, index) => {
+        if (index % Math.ceil(trendData.labels.length / 6) !== 0 && index !== trendData.labels.length - 1) return;
+        const x = trendData.labels.length === 1 ? pad.left + plotW / 2 : pad.left + plotW * index / (trendData.labels.length - 1);
+        ctx.fillStyle = 'rgba(203,213,225,.72)';
+        ctx.textAlign = 'center';
+        ctx.fillText(label.replace(' ', '\n'), x, height - 13);
+    });
+
+    canvas._trendPoints = points;
+}
+
+function renderTrendPointList() {
+    const target = document.getElementById('trendPointList');
+    if (!target) return;
+    target.innerHTML = (trendData.labels || []).map((label, index) => `
+        <button class="breakdown-item" type="button" data-detail-type="month" data-detail-value="${escapeHtml(trendData.keys[index])}">
+            <span>
+                <span class="breakdown-name">${escapeHtml(label)}</span>
+                <span class="breakdown-meta">$${formatNumber(trendData.value[index])} value · ${formatNumber(trendData.risk[index])} risk points</span>
+            </span>
+            <span class="breakdown-value">${formatNumber(trendData.available[index])}</span>
+        </button>
+    `).join('');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-detail-type]').forEach(el => {
+        el.addEventListener('click', () => openDetail(el.getAttribute('data-detail-type'), el.getAttribute('data-detail-value')));
+    });
+    document.getElementById('detailClose').addEventListener('click', closeDetail);
+    document.getElementById('detailModal').addEventListener('click', event => {
+        if (event.target.id === 'detailModal') closeDetail();
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeDetail();
+    });
+
+    renderTrendPointList();
+    drawTrend();
+    window.addEventListener('resize', drawTrend);
+
+    const canvas = document.getElementById('inventoryTrendChart');
+    if (canvas) {
+        canvas.addEventListener('click', event => {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            const nearest = (canvas._trendPoints || []).reduce((best, point) => {
+                const dist = Math.hypot(point.x - x, point.y - y);
+                return !best || dist < best.dist ? { ...point, dist } : best;
+            }, null);
+            if (nearest && nearest.dist < 28) openDetail('month', nearest.key);
+        });
+    }
+});
+</script>
+{% endblock %}

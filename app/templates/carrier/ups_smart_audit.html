@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+
+{% block title %}UPS Smart Audit | MerchOps AI{% endblock %}
+{% block page_title %}UPS Smart Audit{% endblock %}
+{% block page_subtitle %}Smart billing audit by tracking ID: skip zero billed rows, compare billed charge against contract expected charge when available.{% endblock %}
+
+{% block extra_css %}
+<style>
+    .audit-grid {
+        display: grid;
+        grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+    }
+
+    .audit-panel,
+    .audit-kpi {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+    }
+
+    .audit-panel { overflow: hidden; }
+    .audit-panel-body { padding: 16px; }
+
+    .audit-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--card-border);
+        background: rgba(99,102,241,.035);
+    }
+
+    .audit-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 850;
+    }
+
+    .audit-title i {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--green);
+        background: rgba(52,211,153,.10);
+        border: 1px solid rgba(52,211,153,.24);
+    }
+
+    .audit-field { margin-bottom: 13px; }
+    .audit-label {
+        display: block;
+        margin-bottom: 7px;
+        color: var(--muted);
+        font-size: 10.5px;
+        font-weight: 850;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .audit-input {
+        width: 100%;
+        border: 1px solid var(--card-border);
+        border-radius: 7px;
+        background: var(--input-bg);
+        color: var(--text);
+        padding: 10px 12px;
+        font: 600 12.5px var(--font);
+    }
+
+    .audit-check {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        color: var(--text-2);
+        font-weight: 750;
+    }
+
+    .audit-btn {
+        width: 100%;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid rgba(99,102,241,.32);
+        border-radius: 7px;
+        background: rgba(99,102,241,.12);
+        color: var(--accent);
+        padding: 11px 13px;
+        font: 850 12px var(--font);
+        cursor: pointer;
+    }
+
+    .audit-kpis {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .audit-kpi { padding: 14px; min-height: 76px; }
+    .audit-kpi-num {
+        color: var(--accent);
+        font-size: 24px;
+        font-weight: 850;
+        line-height: 1;
+    }
+    .audit-kpi-label {
+        margin-top: 7px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .audit-note {
+        margin-top: 12px;
+        padding: 11px;
+        border-radius: 8px;
+        border: 1px solid rgba(251,191,36,.20);
+        background: rgba(251,191,36,.08);
+        color: var(--text-2);
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .audit-ai {
+        white-space: pre-wrap;
+        color: var(--text-2);
+        line-height: 1.55;
+    }
+
+    .audit-table-wrap { overflow-x: auto; }
+    .audit-table {
+        width: 100%;
+        min-width: 980px;
+        border-collapse: collapse;
+        font-size: 12px;
+    }
+    .audit-table th {
+        padding: 10px 12px;
+        text-align: left;
+        color: var(--muted);
+        border-bottom: 1px solid var(--card-border);
+        background: rgba(99,102,241,.035);
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+    .audit-table td {
+        padding: 11px 12px;
+        color: var(--text-2);
+        border-bottom: 1px solid rgba(148,163,184,.10);
+        vertical-align: top;
+    }
+    .audit-status {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 3px 8px;
+        font-size: 10px;
+        font-weight: 850;
+    }
+    .audit-status.OK,
+    .audit-status.Correct { color: var(--green); background: rgba(52,211,153,.10); }
+    .audit-status.Need,
+    .audit-status.Overbilled,
+    .audit-status.Underbilled { color: var(--danger); background: rgba(248,113,113,.10); }
+    .audit-status.Zone,
+    .audit-status.Skipped { color: var(--amber); background: rgba(251,191,36,.10); }
+
+    @media (max-width: 980px) {
+        .audit-grid { grid-template-columns: 1fr; }
+        .audit-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="audit-grid">
+    <section class="audit-panel">
+        <div class="audit-panel-header">
+            <div class="audit-title">
+                <i class="fas fa-sliders"></i>
+                <span>Audit Setup</span>
+            </div>
+        </div>
+        <div class="audit-panel-body">
+            <form method="post">
+                <div class="audit-field">
+                    <label class="audit-label" for="origin_zip">Origin ZIP</label>
+                    <input class="audit-input" id="origin_zip" name="origin_zip" value="{{ report.origin_zip }}" placeholder="10001">
+                </div>
+                <div class="audit-field">
+                    <label class="audit-label" for="contract_path">UPS Contract PDF Path</label>
+                    <input class="audit-input" id="contract_path" name="contract_path" value="{{ report.contract_path }}" placeholder="D:\...\UPS Contract.pdf">
+                </div>
+                <div class="audit-field">
+                    <label class="audit-label" for="limit">Rows To Test</label>
+                    <input class="audit-input" id="limit" name="limit" type="number" min="25" max="2000" value="{{ limit }}">
+                </div>
+                <div class="audit-field audit-check">
+                    <input id="use_ai" name="use_ai" type="checkbox" value="1">
+                    <label for="use_ai">Generate Anthropic AI audit notes</label>
+                </div>
+                <button class="audit-btn" type="submit">
+                    <i class="fas fa-shield-halved"></i>
+                    Run Smart Audit
+                </button>
+            </form>
+
+            <div class="audit-note">
+                Zero billed rows are skipped for now. The audit extracts contract discounts from the PDF and applies them to the invoice published/list transportation charge by service, zone, and weight.
+                Rows without a matched actual billing row, published charge, service, zone, weight, or contract rule are listed for review by tracking ID.
+            </div>
+            {% if report.contract_loaded %}
+            <div class="audit-note">
+                Contract loaded: {{ report.contract_rules.agreement_no or "UPS contract" }}.
+                Extracted {{ report.contract_rules.rule_count|whole_number }} rule records.
+            </div>
+            {% endif %}
+            {% if report.contract_error %}
+            <div class="audit-note">{{ report.contract_error }}</div>
+            {% endif %}
+        </div>
+    </section>
+
+    <div>
+        <div class="audit-kpis">
+            <div class="audit-kpi"><div class="audit-kpi-num">{{ report.counters.billed_tested|whole_number }}</div><div class="audit-kpi-label">Billed Rows Tested</div></div>
+            <div class="audit-kpi"><div class="audit-kpi-num">{{ report.counters.correct|whole_number }}</div><div class="audit-kpi-label">Correct Bills</div></div>
+            <div class="audit-kpi"><div class="audit-kpi-num">{{ report.counters.billing_exceptions|whole_number }}</div><div class="audit-kpi-label">Exception Bills</div></div>
+            <div class="audit-kpi"><div class="audit-kpi-num">{{ report.counters.overbilled|whole_number }}</div><div class="audit-kpi-label">Overbilled</div></div>
+            <div class="audit-kpi"><div class="audit-kpi-num">{{ report.counters.underbilled|whole_number }}</div><div class="audit-kpi-label">Underbilled</div></div>
+            <div class="audit-kpi"><div class="audit-kpi-num">{{ report.counters.need_contract_rate|whole_number }}</div><div class="audit-kpi-label">Need Contract Rate</div></div>
+            <div class="audit-kpi"><div class="audit-kpi-num">{{ report.counters.need_billing_match|whole_number }}</div><div class="audit-kpi-label">Need Billing Match</div></div>
+        </div>
+
+        <section class="audit-panel" style="margin-bottom:16px;">
+            <div class="audit-panel-header"><div class="audit-title"><i class="fas fa-brain"></i><span>AI Audit Notes</span></div></div>
+            <div class="audit-panel-body audit-ai">
+                {% if report.ai_summary %}
+                    {{ report.ai_summary }}
+                {% elif report.ai_error %}
+                    {{ report.ai_error }}
+                {% else %}
+                    Enable Anthropic AI notes and run the audit to generate a professional audit narrative.
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</div>
+
+<section class="audit-panel" style="margin-top:16px;">
+    <div class="audit-panel-header">
+        <div class="audit-title">
+            <i class="fas fa-table-list"></i>
+            <span>Billing Exceptions by Tracking ID</span>
+        </div>
+    </div>
+    <div class="audit-table-wrap">
+        <table class="audit-table">
+            <thead>
+                <tr>
+                    <th>Tracking</th>
+                    <th>Invoice</th>
+                    <th>Invoice Date</th>
+                    <th>Service</th>
+                    <th>ZIP</th>
+                    <th>Zone</th>
+                    <th>Est. Zone</th>
+                    <th>Audit Zone</th>
+                    <th>Weight</th>
+                    <th>Published</th>
+                    <th>Discount</th>
+                    <th>Billed</th>
+                    <th>Expected</th>
+                    <th>Diff</th>
+                    <th>Bill Status</th>
+                    <th>Reason</th>
+                    <th>Source</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in report.billing_exceptions %}
+                <tr>
+                    <td>{{ row.tracking_number }}</td>
+                    <td>{{ row.invoice_number or "" }}</td>
+                    <td>{{ row.invoice_date or "" }}</td>
+                    <td>{{ row.service_name or "" }}</td>
+                    <td>{{ row.zip_code }}</td>
+                    <td>{{ row.actual_zone or "" }}</td>
+                    <td>{{ row.estimated_zone or "" }}</td>
+                    <td>{{ row.contract_zone or "" }}</td>
+                    <td>{{ (row.billed_weight or 0)|whole_number }}</td>
+                    <td>{% if row.published_charge is not none %}${{ row.published_charge|whole_number }}{% else %}--{% endif %}</td>
+                    <td>
+                        {% if row.contract_discount is not none %}
+                            {{ (row.contract_discount * 100)|whole_number }}%
+                            {% if row.discount_source %}<br><span style="color:var(--muted);">{{ row.discount_source }}</span>{% endif %}
+                        {% else %}
+                            --
+                        {% endif %}
+                    </td>
+                    <td>${{ (row.charge_amount or 0)|whole_number }}</td>
+                    <td>{% if row.expected_charge is not none %}${{ row.expected_charge|whole_number }}{% else %}--{% endif %}</td>
+                    <td>{% if row.difference is not none %}${{ row.difference|whole_number }}{% else %}--{% endif %}</td>
+                    <td><span class="audit-status {{ row.billing_status.split()[0] }}">{{ row.billing_status }}</span></td>
+                    <td>{{ row.billing_reason }}{% if row.reason %}; {{ row.reason }}{% endif %}</td>
+                    <td>
+                        {% if row.billing_source_file %}Billing: {{ row.billing_source_file }}<br>{% endif %}
+                        Manifest: {{ row.source_file }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="17">No billing exceptions found. Zero billed rows are skipped.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480">
+  <rect width="640" height="480" fill="#eff6ff"/>
+  <rect x="120" y="70" width="400" height="340" rx="28" fill="#bfdbfe"/>
+  <path d="M240 112h160l40 82v168H200V194l40-82z" fill="#2563eb" stroke="#dbeafe" stroke-width="8"/>
+  <circle cx="320" cy="168" r="26" fill="#93c5fd"/>
+  <text x="320" y="430" text-anchor="middle" font-family="Arial" font-size="28" font-weight="700" fill="#1e3a8a">BLT515-BLU</text>
+</svg>

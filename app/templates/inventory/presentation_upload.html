@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Inventory | MerchOps AI{% endblock %}
+
+{% block page_title %}Upload Inventory{% endblock %}
+
+{% block page_subtitle %}Upload Excel or CSV files and manage saved inventory batches.{% endblock %}
+
+{% block extra_css %}
+<style>
+.upload-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    background: linear-gradient(135deg, rgba(127,119,221,.07), rgba(88,166,255,.04));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 22px;
+}
+.upload-page-header-left { display: flex; align-items: center; gap: 13px; }
+.upload-page-icon {
+    width: 42px; height: 42px; border-radius: 11px;
+    background: rgba(127,119,221,.10); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.upload-page-icon i { font-size: 19px; color: var(--accent); }
+.upload-page-header-left h2 {
+    font-size: 19px; font-weight: 800; margin: 0;
+    background: linear-gradient(135deg, var(--text) 40%, var(--accent));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.upload-page-header-left p { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+
+.back-link {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--accent-dim); border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 14px;
+    font-size: 12px; color: var(--accent); font-weight: 600;
+    text-decoration: none; transition: .15s;
+}
+.back-link:hover { border-color: var(--line-h); background: rgba(127,119,221,.16); }
+
+.card-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+}
+.card-head i { font-size: 17px; color: var(--accent); }
+.card-head h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--text); }
+
+.upload-tip {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 12px; padding: 10px 13px;
+    background: rgba(52,211,153,.08);
+    border-left: 3px solid var(--green);
+    border-radius: 8px; font-size: 12px; color: var(--green);
+}
+[data-theme="light"] .upload-tip { background: rgba(5,150,105,.07); }
+
+.btn-open {
+    background: rgba(127,119,221,.09);
+    border-color: var(--line); color: var(--text-2);
+}
+[data-theme="light"] .btn-open { background: rgba(127,119,221,.07); }
+.btn-open:hover { border-color: var(--line-h); color: var(--accent); }
+
+.btn-delete {
+    background: rgba(248,113,113,.08);
+    border-color: rgba(248,113,113,.22); color: #fca5a5;
+}
+[data-theme="light"] .btn-delete { background: rgba(220,38,38,.07); color: #7f1d1d; border-color: rgba(220,38,38,.20); }
+.btn-delete:hover { background: rgba(248,113,113,.15); border-color: rgba(248,113,113,.35); }
+
+.upload-grid {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 18px;
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .upload-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="upload-page-header">
+    <div class="upload-page-header-left">
+        <div class="upload-page-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+        <div>
+            <h2>Upload &amp; Batch History</h2>
+            <p>Upload an inventory file to save it to the database and view all past uploads.</p>
+        </div>
+    </div>
+    <a class="back-link" href="{{ url_for('inventory.presentation') }}">
+        <i class="fas fa-arrow-left"></i> Back to Inventory
+    </a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div class="flash flash-{{ cat }}">
+        <i class="fas fa-{% if cat == 'success' %}check-circle{% elif cat == 'danger' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+        {{ msg }}
+    </div>
+    {% endfor %}
+{% endwith %}
+
+{% if error %}
+<div class="flash flash-danger">
+    <i class="fas fa-exclamation-circle"></i> {{ error }}
+</div>
+{% endif %}
+
+<div class="upload-grid">
+
+    <!-- Upload Card -->
+    <div class="card" style="height:fit-content;">
+        <div class="card-head">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <h3>Upload Inventory File</h3>
+        </div>
+
+        <form method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label><i class="fas fa-file-excel" style="margin-right:4px;"></i>Select Excel or CSV</label>
+                <input class="form-control" type="file" name="inventory_file"
+                       accept=".xlsx,.xls,.csv" required>
+            </div>
+            <button class="btn" type="submit" style="width:100%;">
+                <i class="fas fa-upload"></i> Upload and Save
+            </button>
+        </form>
+
+        {% if uploaded_filename %}
+        <div class="upload-tip">
+            <i class="fas fa-check-circle"></i>
+            <span><strong>Uploaded:</strong> {{ uploaded_filename }}</span>
+        </div>
+        {% endif %}
+
+        <div style="margin-top:20px; padding:14px; background:rgba(127,119,221,.05); border:1px solid var(--line); border-radius:10px;">
+            <p style="font-size:11.5px; color:var(--muted); margin:0; line-height:1.7;">
+                <i class="fas fa-info-circle" style="color:var(--accent); margin-right:5px;"></i>
+                Supported formats: <strong style="color:var(--text-2);">.xlsx, .xls, .csv</strong><br>
+                Columns are auto-detected and mapped to the system fields. After upload you will be redirected to the inventory view for the new batch.
+            </p>
+        </div>
+    </div>
+
+    <!-- Saved Batches Card -->
+    <div class="card">
+        <div class="card-head">
+            <i class="fas fa-database"></i>
+            <h3>Saved Batches</h3>
+        </div>
+
+        {% if batches %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Source File</th>
+                        <th>Uploaded At</th>
+                        <th>Rows</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in batches %}
+                    <tr>
+                        <td>
+                            <i class="fas fa-file-excel" style="color:var(--green); margin-right:5px; font-size:11px;"></i>
+                            <strong>{{ b.source_file }}</strong>
+                        </td>
+                        <td style="font-size:11px; color:var(--muted);">{{ b.uploaded_at }}</td>
+                        <td><span class="pill">{{ b.row_count }}</span></td>
+                        <td>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                <a class="btn btn-open"
+                                   href="{{ url_for('inventory.presentation', batch_id=b.upload_batch_id) }}"
+                                   style="padding:5px 10px; font-size:11px;">
+                                    <i class="fas fa-folder-open"></i> Open
+                                </a>
+                                <form method="post"
+                                      action="{{ url_for('inventory.presentation_delete_batch', batch_id=b.upload_batch_id) }}"
+                                      onsubmit="return confirm('Delete this batch? This cannot be undone.');"
+                                      style="display:inline;">
+                                    <button class="btn btn-delete" type="submit"
+                                            style="padding:5px 10px; font-size:11px;">
+                                        <i class="fas fa-trash-alt"></i> Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state" style="padding:40px 20px;">
+            <i class="fas fa-database"></i>
+            <h3>No saved batches yet</h3>
+            <p>Upload your first inventory file to get started.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,616 @@
+{% extends "base.html" %}
+
+{% block title %}Organization Detail | {{ org.name }}{% endblock %}
+
+{% block page_title %}Organization Detail{% endblock %}
+
+{% block page_subtitle %}Review database settings, email setup, and assigned users.{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── org header ── */
+    .org-header {
+        position: relative;
+        background: linear-gradient(135deg, rgba(127,119,221,.10) 0%, rgba(29,158,117,.05) 100%);
+        border-radius: var(--r-xl); padding: 24px 28px; margin-bottom: 24px;
+        border: 1px solid rgba(127,119,221,.28); overflow: hidden;
+    }
+    .org-header::before {
+        content: ''; position: absolute; inset: 0;
+        background-image:
+            repeating-linear-gradient(0deg,  transparent, transparent 28px, rgba(127,119,221,.04) 28px, rgba(127,119,221,.04) 29px),
+            repeating-linear-gradient(90deg, transparent, transparent 28px, rgba(127,119,221,.04) 28px, rgba(127,119,221,.04) 29px);
+        pointer-events: none;
+    }
+    .org-header::after {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(127,119,221,.6), rgba(29,158,117,.4), transparent);
+    }
+    .org-header-top {
+        position: relative;
+        display: flex; justify-content: space-between; align-items: flex-start;
+        flex-wrap: wrap; gap: 16px;
+    }
+    .org-header-title-row {
+        display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
+    }
+   .org-header-name {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--text) 30%, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+    .org-code {
+        font-family: var(--font-mono);
+        background: rgba(127,119,221,.14); border: 1px solid rgba(127,119,221,.3);
+        padding: 4px 12px; border-radius: 999px; font-size: 12px; color: var(--accent);
+        display: inline-flex; align-items: center; gap: 5px;
+    }
+    .org-header-desc { color: var(--muted); margin: 0; font-size: 12px; }
+
+    /* ── stat mini boxes ── */
+    .stats-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; position: relative; }
+    .stat-mini {
+    flex: 1;
+    min-width: 100px;
+    text-align: center;
+
+    background: var(--card-bg, rgba(255,255,255,.75));
+
+    border-radius: var(--r);
+    padding: 12px 14px;
+
+    border: 1px solid rgba(127,119,221,.16);
+    border-bottom: 2px solid rgba(127,119,221,.4);
+
+    transition: transform .2s, box-shadow .2s;
+    position: relative;
+    overflow: hidden;
+
+    backdrop-filter: blur(8px);
+}
+    .stat-mini::before {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(180deg, rgba(127,119,221,.04) 0%, transparent 60%);
+        pointer-events: none;
+    }
+    .stat-mini:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(127,119,221,.18); }
+    .stat-mini:nth-child(3) { border-bottom-color: rgba(29,158,117,.5); }
+    .stat-mini:nth-child(3):hover { box-shadow: 0 8px 20px rgba(29,158,117,.18); }
+    .stat-mini .number {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--text), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+    .stat-mini:nth-child(3) .number {
+    background: linear-gradient(135deg, var(--text), #1D9E75);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+    .stat-mini .label {
+        font-size: 10px; color: var(--muted); margin-top: 5px;
+        text-transform: uppercase; letter-spacing: .07em; font-weight: 600;
+        font-family: var(--font-mono);
+    }
+
+    /* ── config cards ── */
+    .config-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px; margin-bottom: 24px;
+    }
+    .config-card {
+        transition: transform .2s, box-shadow .2s, border-color .2s;
+    }
+    .config-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(127,119,221,.14);
+        border-color: rgba(127,119,221,.4);
+    }
+    .config-card-inner {
+        display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+        padding-bottom: 14px; border-bottom: 1px solid rgba(127,119,221,.12);
+    }
+    .config-card-icon { font-size: 22px; color: var(--accent); }
+    .config-card-title { margin: 0; font-size: 15px; font-weight: 600; }
+
+    .config-item {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 0; border-bottom: 1px solid rgba(127,119,221,.08);
+    }
+    .config-item:last-child { border-bottom: none; }
+    .config-label { font-weight: 600; color: var(--muted); font-size: 12.5px; display: flex; align-items: center; gap: 6px; }
+    .config-value { font-family: var(--font-mono); color: var(--cyan, #22d3ee); font-size: 13px; }
+    .config-value.na { color: var(--muted); font-style: italic; }
+    .status-ok   { color: var(--green); display: flex; align-items: center; gap: 5px; }
+    .status-warn { color: var(--amber); display: flex; align-items: center; gap: 5px; }
+
+    /* ── users section ── */
+    .users-section-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 18px; flex-wrap: wrap; gap: 14px;
+    }
+    .users-section-title-row { display: flex; align-items: center; gap: 10px; }
+    .users-section-icon { font-size: 20px; color: var(--accent); }
+
+    /* ── detail table ── */
+    .detail-table { width: 100%; }
+    .detail-table th {
+        padding: 11px 14px;
+        font-family: var(--font-mono); font-size: 11px;
+        letter-spacing: .08em; text-transform: uppercase;
+        color: var(--accent); background: rgba(127,119,221,.05);
+        border-bottom: 1px solid rgba(127,119,221,.14);
+    }
+    .detail-table td { padding: 13px 14px; vertical-align: middle; border-bottom: 1px solid rgba(127,119,221,.06); }
+    .detail-user-name { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+    .detail-user-icon { color: var(--accent); font-size: 16px; }
+    td.mono { font-family: var(--font-mono); font-size: 12.5px; }
+
+    .user-row { transition: background .15s; animation: rowIn .3s ease forwards; opacity: 0; }
+    .user-row:nth-child(1){animation-delay:.04s} .user-row:nth-child(2){animation-delay:.08s}
+    .user-row:nth-child(3){animation-delay:.12s} .user-row:nth-child(4){animation-delay:.16s}
+    .user-row:hover { background: rgba(127,119,221,.04); }
+    .user-row:hover td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
+
+    /* ── status badges ── */
+    .user-status-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+    }
+    .status-active   { background: rgba(52,211,153,.12); color: var(--green); border: 1px solid rgba(52,211,153,.28); }
+    .status-inactive { background: rgba(248,113,113,.12); color: var(--danger,#f87171); border: 1px solid rgba(248,113,113,.28); }
+    .face-registered     { background: rgba(52,211,153,.12); color: var(--green); border: 1px solid rgba(52,211,153,.28); }
+    .face-not-registered { background: rgba(251,191,36,.12); color: var(--amber); border: 1px solid rgba(251,191,36,.28); }
+
+    .btn-profile {
+        background: rgba(127,119,221,.08); border: 1px solid rgba(127,119,221,.28);
+        padding: 5px 13px; font-size: 12px; transition: all .2s;
+    }
+    .btn-profile:hover { background: rgba(127,119,221,.18); border-color: rgba(127,119,221,.55); box-shadow: 0 0 10px rgba(127,119,221,.2); }
+
+    /* ── footer ── */
+    .detail-footer { margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap; }
+
+    @keyframes rowIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Professional organization detail polish */
+    .org-header {
+        background: linear-gradient(180deg, rgba(17,24,39,.92), rgba(15,23,42,.72));
+        border: 1px solid rgba(148,163,184,.18);
+        border-radius: 12px;
+        box-shadow: 0 18px 42px rgba(0,0,0,.18);
+    }
+    .org-header::before {
+        background: linear-gradient(90deg, rgba(59,130,246,.08), transparent 48%, rgba(16,185,129,.06));
+    }
+    .org-header-name,
+    .stat-mini .number,
+    .stat-mini:nth-child(3) .number {
+        background: none;
+        -webkit-background-clip: initial;
+        background-clip: initial;
+        color: var(--text);
+        letter-spacing: 0;
+    }
+    .org-code {
+        border-radius: 7px;
+        background: rgba(148,163,184,.08);
+        border-color: rgba(148,163,184,.16);
+        color: #cbd5e1;
+    }
+    .org-header-desc {
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .stat-mini {
+        text-align: left;
+        background: rgba(15,23,42,.62);
+        border: 1px solid rgba(148,163,184,.14);
+        border-left: 3px solid rgba(59,130,246,.72);
+        border-bottom: 1px solid rgba(148,163,184,.14);
+        border-radius: 10px;
+        box-shadow: none;
+    }
+    .stat-mini:nth-child(2) { border-left-color: rgba(16,185,129,.72); }
+    .stat-mini:nth-child(3) { border-left-color: rgba(14,165,233,.72); border-bottom-color: rgba(148,163,184,.14); }
+    .stat-mini:nth-child(4) { border-left-color: rgba(245,158,11,.72); }
+    .stat-mini::before {
+        display: none;
+    }
+    .stat-mini:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 28px rgba(0,0,0,.16);
+    }
+    .stat-mini .number {
+        font-size: 27px;
+        font-weight: 750;
+    }
+    .config-card,
+    .card {
+        border-radius: 12px;
+        border-color: rgba(148,163,184,.16);
+        background: rgba(15,23,42,.58);
+    }
+    .config-card:hover {
+        transform: translateY(-1px);
+        border-color: rgba(148,163,184,.24);
+        box-shadow: 0 12px 28px rgba(0,0,0,.16);
+    }
+    .config-card-inner {
+        border-bottom-color: rgba(148,163,184,.14);
+    }
+    .config-card-icon,
+    .users-section-icon,
+    .detail-user-icon {
+        color: #93c5fd;
+    }
+    .config-item {
+        border-bottom-color: rgba(148,163,184,.1);
+    }
+    .config-value {
+        color: #bfdbfe;
+    }
+    .detail-table th {
+        color: var(--muted);
+        background: rgba(2,6,23,.26);
+        border-bottom-color: rgba(148,163,184,.14);
+    }
+    .detail-table td {
+        border-bottom-color: rgba(148,163,184,.09);
+    }
+    .user-row:hover {
+        background: rgba(59,130,246,.06);
+    }
+    .user-row:hover td:first-child {
+        box-shadow: inset 2px 0 0 #60a5fa;
+    }
+    .user-status-badge,
+    .pill {
+        border-radius: 7px;
+    }
+    .btn-profile {
+        border-radius: 8px;
+        color: #bfdbfe;
+        background: rgba(59,130,246,.1);
+        border-color: rgba(59,130,246,.24);
+    }
+    .btn-profile:hover {
+        background: rgba(59,130,246,.18);
+        border-color: rgba(59,130,246,.38);
+        box-shadow: none;
+    }
+    @media (max-width: 900px) {
+        .stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+        .org-header { padding: 20px; }
+        .stats-row { grid-template-columns: 1fr; }
+    }
+
+    /* Light theme: clean organization detail */
+    html[data-theme="light"] .org-header {
+        background: #ffffff;
+        border-color: #dbe3f0;
+        box-shadow: 0 14px 34px rgba(15,23,42,.08);
+    }
+    html[data-theme="light"] .org-header::before {
+        background: linear-gradient(135deg, rgba(37,99,235,.06), transparent 52%, rgba(16,185,129,.05));
+    }
+    html[data-theme="light"] .org-header-name,
+    html[data-theme="light"] .stat-mini .number {
+        color: #0f172a;
+    }
+    html[data-theme="light"] .org-header-desc,
+    html[data-theme="light"] .stat-mini .label,
+    html[data-theme="light"] .config-label {
+        color: #64748b;
+    }
+    html[data-theme="light"] .org-code {
+        background: #f1f5f9;
+        border-color: #dbe3f0;
+        color: #334155;
+    }
+    html[data-theme="light"] .stat-mini,
+    html[data-theme="light"] .config-card,
+    html[data-theme="light"] .card {
+        background: #ffffff;
+        border-color: #dbe3f0;
+        box-shadow: 0 10px 26px rgba(15,23,42,.05);
+    }
+    html[data-theme="light"] .stat-mini {
+        background: #f8fafc;
+        border-left-color: #2563eb;
+    }
+    html[data-theme="light"] .stat-mini:nth-child(2) { border-left-color: #059669; }
+    html[data-theme="light"] .stat-mini:nth-child(3) { border-left-color: #0284c7; }
+    html[data-theme="light"] .stat-mini:nth-child(4) { border-left-color: #d97706; }
+    html[data-theme="light"] .config-card:hover,
+    html[data-theme="light"] .stat-mini:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 12px 28px rgba(15,23,42,.08);
+    }
+    html[data-theme="light"] .config-card-inner,
+    html[data-theme="light"] .config-item {
+        border-bottom-color: #e5e7eb;
+    }
+    html[data-theme="light"] .config-card-icon,
+    html[data-theme="light"] .users-section-icon,
+    html[data-theme="light"] .detail-user-icon {
+        color: #2563eb;
+    }
+    html[data-theme="light"] .config-value {
+        color: #1d4ed8;
+    }
+    html[data-theme="light"] .detail-table th {
+        background: #f8fafc;
+        color: #64748b;
+        border-bottom-color: #dbe3f0;
+    }
+    html[data-theme="light"] .detail-table td {
+        color: #0f172a;
+        border-bottom-color: #e5e7eb;
+        background: #ffffff;
+    }
+    html[data-theme="light"] .user-row:hover td {
+        background: #f8fafc;
+    }
+    html[data-theme="light"] .user-row:hover td:first-child {
+        box-shadow: inset 3px 0 0 #2563eb;
+    }
+    html[data-theme="light"] .btn-profile {
+        color: #1d4ed8;
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+    html[data-theme="light"] .btn-profile:hover {
+        color: #ffffff;
+        background: #2563eb;
+        border-color: #2563eb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Organization Header -->
+<div class="org-header">
+    <div class="org-header-top">
+        <div>
+            <div class="org-header-title-row">
+                <h2 class="org-header-name">{{ org.name }}</h2>
+                <span class="org-code">
+                    <i class="fas fa-tag"></i> {{ org.code }}
+                </span>
+            </div>
+            <p class="org-header-desc">
+                <i class="fas fa-building"></i> Tenant-level configuration and assigned user overview.
+            </p>
+        </div>
+
+        <a class="btn btn-primary" href="{{ url_for('organization.organization_users', org_id=org.id) }}">
+            <i class="fas fa-users-gear"></i> Manage Users
+        </a>
+    </div>
+    
+    <!-- Quick Stats -->
+    <div class="stats-row">
+        <div class="stat-mini">
+            <div class="number">{{ users|length if users else 0 }}</div>
+            <div class="label"><i class="fas fa-users"></i> Total Users</div>
+        </div>
+        <div class="stat-mini">
+            <div class="number">{{ users|selectattr('user.is_active', 'equalto', true)|list|length if users else 0 }}</div>
+            <div class="label"><i class="fas fa-check-circle"></i> Active Users</div>
+        </div>
+        <div class="stat-mini">
+            <div class="number">{{ users|selectattr('face_registered', 'equalto', true)|list|length if users else 0 }}</div>
+            <div class="label"><i class="fas fa-face-smile"></i> Face Registered</div>
+        </div>
+        <div class="stat-mini">
+            <div class="number">{{ users|selectattr('user.role_name', 'equalto', 'org_admin')|list|length if users else 0 }}</div>
+            <div class="label"><i class="fas fa-user-shield"></i> Org Admins</div>
+        </div>
+    </div>
+</div>
+
+<!-- Configuration Cards -->
+<div class="grid grid-2 config-cards-grid">
+    <!-- Database Settings Card -->
+    <div class="card config-card">
+        <div class="config-card-inner">
+            <i class="fas fa-database config-card-icon"></i>
+            <h3 class="section-title config-card-title">Database Settings</h3>
+        </div>
+
+        <div class="config-item">
+            <span class="config-label"><i class="fas fa-server"></i> Server</span>
+            <span class="config-value {% if not org.db_server %}na{% endif %}">
+                {{ org.db_server or 'Not configured' }}
+            </span>
+        </div>
+
+        <div class="config-item">
+            <span class="config-label"><i class="fas fa-table"></i> Database</span>
+            <span class="config-value {% if not org.db_name %}na{% endif %}">
+                {{ org.db_name or 'Not configured' }}
+            </span>
+        </div>
+
+        <div class="config-item">
+            <span class="config-label"><i class="fas fa-microchip"></i> Driver</span>
+            <span class="config-value {% if not org.db_driver %}na{% endif %}">
+                {{ org.db_driver or 'Not configured' }}
+            </span>
+        </div>
+
+        <div class="config-item">
+            <span class="config-label"><i class="fas fa-plug"></i> Status</span>
+            <span class="config-value">
+                {% if org.db_server and org.db_name %}
+                    <span class="status-ok"><i class="fas fa-check-circle"></i> Connected</span>
+                {% else %}
+                    <span class="status-warn"><i class="fas fa-exclamation-triangle"></i> Pending Setup</span>
+                {% endif %}
+            </span>
+        </div>
+    </div>
+
+    <!-- Email Settings Card -->
+    <div class="card config-card">
+        <div class="config-card-inner">
+            <i class="fas fa-envelope config-card-icon"></i>
+            <h3 class="section-title config-card-title">Email Settings</h3>
+        </div>
+
+        <div class="config-item">
+            <span class="config-label"><i class="fas fa-at"></i> Email Address</span>
+            <span class="config-value {% if not org.email %}na{% endif %}">
+                {{ org.email or 'Not configured' }}
+            </span>
+        </div>
+
+        <div class="config-item">
+            <span class="config-label"><i class="fas fa-mail-bulk"></i> SMTP Server</span>
+            <span class="config-value {% if not org.smtp_server %}na{% endif %}">
+                {{ org.smtp_server or 'Not configured' }}
+            </span>
+        </div>
+
+        <div class="config-item">
+            <span class="config-label"><i class="fas fa-plug"></i> SMTP Port</span>
+            <span class="config-value {% if not org.smtp_port %}na{% endif %}">
+                {{ org.smtp_port or 'Not configured' }}
+            </span>
+        </div>
+
+        <div class="config-item">
+            <span class="config-label"><i class="fas fa-shield-alt"></i> Security</span>
+            <span class="config-value">
+                {% if org.smtp_server and org.smtp_port %}
+                    <span class="status-ok"><i class="fas fa-lock"></i> TLS Enabled</span>
+                {% else %}
+                    <span class="status-warn"><i class="fas fa-exclamation-triangle"></i> Not Configured</span>
+                {% endif %}
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Assigned Users Card -->
+<div class="card">
+    <div class="users-section-header">
+        <div class="users-section-title-row">
+            <i class="fas fa-users users-section-icon"></i>
+            <h3 class="section-title">Assigned Users</h3>
+        </div>
+
+        {% if users %}
+        <div class="pill pill-purple">
+            <i class="fas fa-user-check"></i> {{ users|length }} Total Users
+        </div>
+        {% endif %}
+    </div>
+
+    {% if users %}
+        <div class="table-wrap">
+            <table class="detail-table">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-user"></i> Name</th>
+                        <th><i class="fas fa-at"></i> Username</th>
+                        <th><i class="fas fa-shield-alt"></i> Role</th>
+                        <th><i class="fas fa-heartbeat"></i> Status</th>
+                        <th><i class="fas fa-face-smile"></i> Face Status</th>
+                        <th><i class="fas fa-cog"></i> Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in users %}
+                    <tr class="user-row">
+                        <td>
+                            <strong class="detail-user-name">
+                                <i class="fas fa-user-circle detail-user-icon"></i>
+                                {{ item.user.full_name }}
+                            </strong>
+                        </td>
+                        <td class="mono">{{ item.user.username }}</td>
+                        <td>
+                            <span class="pill pill-purple">
+                                {% if item.user.role_name == 'super_admin' %}
+                                    <i class="fas fa-crown"></i>
+                                {% elif item.user.role_name == 'org_admin' %}
+                                    <i class="fas fa-user-tie"></i>
+                                {% else %}
+                                    <i class="fas fa-user"></i>
+                                {% endif %}
+                                {{ item.user.role_name }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if item.user.is_active %}
+                                <span class="user-status-badge status-active">
+                                    <i class="fas fa-check-circle"></i> Active
+                                </span>
+                            {% else %}
+                                <span class="user-status-badge status-inactive">
+                                    <i class="fas fa-ban"></i> Inactive
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.face_registered %}
+                                <span class="user-status-badge face-registered">
+                                    <i class="fas fa-check-circle"></i> Registered
+                                </span>
+                            {% else %}
+                                <span class="user-status-badge face-not-registered">
+                                    <i class="fas fa-exclamation-triangle"></i> Not Registered
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a class="btn btn-outline btn-profile" href="{{ url_for('users.user_profile', user_id=item.user.id) }}">
+                                <i class="fas fa-id-card"></i> Profile
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-users-slash"></i>
+            <h3>No Users Assigned</h3>
+            <p>Create the first user for this organization to get started.</p>
+            <a class="btn btn-primary" href="{{ url_for('organization.organization_users', org_id=org.id) }}">
+                <i class="fas fa-user-plus"></i> Create First User
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Quick Actions Footer -->
+<div class="detail-footer">
+    <a class="btn btn-outline" href="{{ url_for('organization.list_organizations') }}">
+        <i class="fas fa-arrow-left"></i> Back to Organizations
+    </a>
+    <a class="btn btn-primary" href="{{ url_for('organization.organization_users', org_id=org.id) }}">
+        <i class="fas fa-users-gear"></i> Manage Users & Roles
+    </a>
+</div>
+{% endblock %}

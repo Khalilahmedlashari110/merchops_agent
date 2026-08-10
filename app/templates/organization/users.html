@@ -1,0 +1,747 @@
+{% extends "base.html" %}
+
+{% block title %}Organization Users | {{ org.name }}{% endblock %}
+
+{% block page_title %}Organization Users{% endblock %}
+
+{% block page_subtitle %}Create users, assign roles, and manage face registration status.{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── org mini header ── */
+    .org-header-mini {
+        position: relative;
+        background: linear-gradient(135deg, rgba(127,119,221,.10) 0%, rgba(29,158,117,.05) 100%);
+        border-radius: var(--r-xl); padding: 20px 26px; margin-bottom: 24px;
+        border: 1px solid rgba(127,119,221,.28); overflow: hidden;
+    }
+    .org-header-mini::before {
+        content: ''; position: absolute; inset: 0;
+        background-image:
+            repeating-linear-gradient(0deg,  transparent, transparent 28px, rgba(127,119,221,.04) 28px, rgba(127,119,221,.04) 29px),
+            repeating-linear-gradient(90deg, transparent, transparent 28px, rgba(127,119,221,.04) 28px, rgba(127,119,221,.04) 29px);
+        pointer-events: none;
+    }
+    .org-header-mini::after {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(127,119,221,.6), rgba(29,158,117,.4), transparent);
+    }
+    .org-header-top {
+        position: relative;
+        display: flex; justify-content: space-between; align-items: flex-start;
+        flex-wrap: wrap; gap: 16px;
+    }
+    .org-header-left-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .org-header-icon { font-size: 24px; color: var(--accent); }
+    .org-header-title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--text) 30%, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+    .org-name-badge {
+        display: inline-flex; align-items: center; gap: 7px;
+        background: rgba(127,119,221,.12); border: 1px solid rgba(127,119,221,.28);
+        padding: 4px 12px; border-radius: 999px; font-size: 12px;
+        color: var(--accent); margin-top: 6px; font-family: var(--font-mono);
+    }
+    .org-header-desc { color: var(--muted); margin: 10px 0 0; font-size: 12px; }
+
+    /* ── form card ── */
+    .form-card {
+        background: var(--card-bg);
+        border-radius: var(--r-xl);
+        border: 1px solid rgba(127,119,221,.2);
+        transition: border-color .2s, box-shadow .2s;
+    }
+    .form-card:hover { border-color: rgba(127,119,221,.38); box-shadow: 0 6px 24px rgba(127,119,221,.10); }
+    .form-card-padded { padding: 24px; }
+
+    .form-section-title {
+        display: flex; align-items: center; gap: 10px;
+        margin-bottom: 20px; padding-bottom: 12px;
+        border-bottom: 1px solid rgba(127,119,221,.15);
+    }
+    .form-section-title i { font-size: 20px; color: var(--accent); }
+    .form-section-title h3 { margin: 0; font-size: 17px; font-weight: 600; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+        display: flex; align-items: center; gap: 7px;
+        margin-bottom: 7px; font-size: 12.5px; font-weight: 600; color: var(--text-2);
+    }
+    .form-group label i { color: var(--accent); font-size: 13px; }
+    .form-group .required { color: var(--danger, #f87171); font-size: 11px; }
+
+    .form-control, select.form-control {
+        width: 100%; padding: 10px 14px; border-radius: var(--r);
+        border: 1px solid rgba(127,119,221,.2);
+        background: rgba(127,119,221,.04);
+        color: var(--text); font-size: 13.5px; font-family: var(--font);
+        transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+    .form-control:focus, select.form-control:focus {
+        outline: none;
+        border-color: rgba(127,119,221,.58);
+        box-shadow: 0 0 0 3px rgba(127,119,221,.10);
+        background: rgba(127,119,221,.07);
+    }
+    .form-control::placeholder { color: var(--muted); }
+    select.form-control option { background: var(--card-bg); color: var(--text); }
+
+    .form-hint { font-size: 11px; color: var(--muted); margin-top: 5px; display: flex; align-items: center; gap: 5px; }
+    .form-hint.centered { justify-content: center; }
+
+    .btn-create {
+    background: var(--accent);
+    border: 1px solid rgba(127,119,221,.35);
+    width: 100%;
+    padding: 11px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 6px;
+    color: #fff;
+    transition: all .2s;
+}
+   .btn-create:hover {
+    background: var(--accent-vivid, #6366f1);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(127,119,221,.25);
+}
+
+    /* ── password strength ── */
+    .password-strength {
+        margin-top: 7px; height: 3px; border-radius: 3px;
+        background: rgba(255,255,255,.08); overflow: hidden;
+    }
+    .strength-bar { width: 0%; height: 100%; transition: width .3s ease; }
+    .strength-weak   { background: var(--danger,#f87171); width: 33%; }
+    .strength-medium { background: var(--amber); width: 66%; }
+    .strength-strong { background: var(--green); width: 100%; }
+    .strength-text   { font-size: 10px; margin-top: 3px; color: var(--muted); }
+
+    /* ── users table card ── */
+    .users-table-card {
+        background: var(--card-bg); border-radius: var(--r-xl);
+        border: 1px solid rgba(127,119,221,.2); overflow: hidden;
+    }
+    .users-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 18px 22px; border-bottom: 1px solid rgba(127,119,221,.12);
+        flex-wrap: wrap; gap: 10px;
+    }
+    .users-header-title-row { display: flex; align-items: center; gap: 10px; }
+    .users-header-title-row i { color: var(--accent); font-size: 18px; }
+    .users-header-title-row h3 { margin: 0; font-size: 16px; font-weight: 600; }
+    .users-count {
+        background: rgba(127,119,221,.12); border: 1px solid rgba(127,119,221,.25);
+        padding: 4px 12px; border-radius: 999px; font-size: 11.5px; font-weight: 600; color: var(--accent);
+        font-family: var(--font-mono);
+    }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+        text-align: left; padding: 11px 16px;
+        font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em;
+        text-transform: uppercase; color: var(--accent);
+        background: rgba(127,119,221,.05); border-bottom: 1px solid rgba(127,119,221,.12);
+    }
+    td { padding: 13px 16px; border-bottom: 1px solid rgba(127,119,221,.06); vertical-align: middle; }
+    td.mono { font-family: var(--font-mono); font-size: 12.5px; }
+
+    .user-row { animation: rowIn .3s ease forwards; opacity: 0; transition: background .15s; }
+    .user-row:nth-child(1){animation-delay:.05s} .user-row:nth-child(2){animation-delay:.10s}
+    .user-row:nth-child(3){animation-delay:.15s} .user-row:nth-child(4){animation-delay:.20s}
+    .user-row:nth-child(5){animation-delay:.25s}
+    .user-row:hover { background: rgba(127,119,221,.04); }
+    .user-row:hover td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
+
+    .user-name { display: flex; align-items: center; gap: 9px; font-weight: 600; }
+    .user-name i { color: var(--accent); font-size: 15px; }
+
+    /* ── role & status badges ── */
+    .role-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+    .role-super-admin { background: rgba(251,191,36,.14); color: var(--amber); border: 1px solid rgba(251,191,36,.3); }
+    .role-org-admin   { background: rgba(127,119,221,.14); color: var(--accent); border: 1px solid rgba(127,119,221,.3); }
+    .role-user        { background: rgba(148,163,184,.12); color: var(--text-2); border: 1px solid rgba(148,163,184,.25); }
+
+    .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+    .status-active   { background: rgba(52,211,153,.12); color: var(--green); border: 1px solid rgba(52,211,153,.28); }
+    .status-inactive { background: rgba(248,113,113,.12); color: var(--danger,#f87171); border: 1px solid rgba(248,113,113,.28); }
+    .face-registered     { background: rgba(52,211,153,.12); color: var(--green); border: 1px solid rgba(52,211,153,.28); }
+    .face-not-registered { background: rgba(251,191,36,.12); color: var(--amber);  border: 1px solid rgba(251,191,36,.28); }
+
+    .btn-profile {
+        background: rgba(127,119,221,.08); border: 1px solid rgba(127,119,221,.28);
+        padding: 5px 13px; font-size: 12px; transition: all .2s;
+    }
+    .btn-profile:hover { background: rgba(127,119,221,.18); border-color: rgba(127,119,221,.55); box-shadow: 0 0 10px rgba(127,119,221,.2); }
+
+    /* ── empty state ── */
+    .empty-state { text-align: center; padding: 44px 20px; }
+    .empty-state i { font-size: 42px; color: var(--muted); margin-bottom: 14px; opacity: .45; display: block; }
+    .empty-state h3 { margin: 0 0 6px; font-size: 17px; }
+    .empty-state p { color: var(--muted); margin-bottom: 18px; font-size: 13px; }
+
+    /* ── footer ── */
+    .users-footer {
+        margin-top: 22px; display: flex; gap: 14px;
+        flex-wrap: wrap; justify-content: space-between; align-items: center;
+    }
+    .users-footer-pills { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    @keyframes rowIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Professional organization users polish */
+    .org-header-mini {
+        background: linear-gradient(180deg, rgba(17,24,39,.92), rgba(15,23,42,.72));
+        border: 1px solid rgba(148,163,184,.18);
+        border-radius: 12px;
+        box-shadow: 0 18px 42px rgba(0,0,0,.18);
+    }
+    .org-header-mini::before {
+        background: linear-gradient(90deg, rgba(59,130,246,.08), transparent 48%, rgba(16,185,129,.06));
+    }
+    .org-header-title {
+        background: none;
+        -webkit-background-clip: initial;
+        background-clip: initial;
+        color: var(--text);
+        letter-spacing: 0;
+    }
+    .org-header-icon {
+        width: 40px;
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: rgba(59,130,246,.12);
+        border: 1px solid rgba(59,130,246,.22);
+        color: #93c5fd;
+    }
+    .org-name-badge {
+        border-radius: 7px;
+        background: rgba(148,163,184,.08);
+        border-color: rgba(148,163,184,.16);
+        color: #cbd5e1;
+    }
+    .org-header-desc {
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .form-card,
+    .users-table-card {
+        border-radius: 12px;
+        border-color: rgba(148,163,184,.16);
+        background: rgba(15,23,42,.58);
+        box-shadow: none;
+    }
+    .form-card:hover {
+        border-color: rgba(148,163,184,.24);
+        box-shadow: 0 12px 28px rgba(0,0,0,.16);
+    }
+    .form-section-title,
+    .users-header {
+        border-bottom-color: rgba(148,163,184,.14);
+    }
+    .form-section-title i,
+    .users-header-title-row i,
+    .form-group label i,
+    .user-name i {
+        color: #93c5fd;
+    }
+    .form-control,
+    select.form-control {
+        min-height: 40px;
+        border-radius: 9px;
+        background: rgba(2,6,23,.28);
+        border-color: rgba(148,163,184,.2);
+    }
+    .form-control:focus,
+    select.form-control:focus {
+        background: rgba(2,6,23,.42);
+        border-color: rgba(59,130,246,.48);
+        box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+    }
+    .btn-create {
+        border-radius: 8px;
+        background: #2563eb;
+        border-color: rgba(59,130,246,.45);
+        box-shadow: none;
+    }
+    .btn-create:hover {
+        background: #1d4ed8;
+        box-shadow: 0 10px 22px rgba(37,99,235,.22);
+    }
+    .users-count,
+    .role-badge,
+    .status-badge,
+    .pill {
+        border-radius: 7px;
+    }
+    th {
+        color: var(--muted);
+        background: rgba(2,6,23,.26);
+        border-bottom-color: rgba(148,163,184,.14);
+    }
+    td {
+        border-bottom-color: rgba(148,163,184,.09);
+    }
+    .user-row:hover {
+        background: rgba(59,130,246,.06);
+    }
+    .user-row:hover td:first-child {
+        box-shadow: inset 2px 0 0 #60a5fa;
+    }
+    .btn-profile {
+        border-radius: 8px;
+        color: #bfdbfe;
+        background: rgba(59,130,246,.1);
+        border-color: rgba(59,130,246,.24);
+    }
+    .btn-profile:hover {
+        background: rgba(59,130,246,.18);
+        border-color: rgba(59,130,246,.38);
+        box-shadow: none;
+    }
+
+    /* Light theme: clean user management */
+    html[data-theme="light"] .org-header-mini,
+    html[data-theme="light"] .form-card,
+    html[data-theme="light"] .users-table-card {
+        background: #ffffff;
+        border-color: #dbe3f0;
+        box-shadow: 0 10px 26px rgba(15,23,42,.05);
+    }
+    html[data-theme="light"] .org-header-mini {
+        box-shadow: 0 14px 34px rgba(15,23,42,.08);
+    }
+    html[data-theme="light"] .org-header-mini::before {
+        background: linear-gradient(135deg, rgba(37,99,235,.06), transparent 52%, rgba(16,185,129,.05));
+    }
+    html[data-theme="light"] .org-header-title,
+    html[data-theme="light"] .form-section-title h3,
+    html[data-theme="light"] .users-header-title-row h3 {
+        color: #0f172a;
+    }
+    html[data-theme="light"] .org-header-desc,
+    html[data-theme="light"] .form-hint,
+    html[data-theme="light"] .strength-text {
+        color: #64748b;
+    }
+    html[data-theme="light"] .org-header-icon,
+    html[data-theme="light"] .form-section-title i,
+    html[data-theme="light"] .users-header-title-row i,
+    html[data-theme="light"] .form-group label i,
+    html[data-theme="light"] .user-name i {
+        color: #2563eb;
+    }
+    html[data-theme="light"] .org-name-badge,
+    html[data-theme="light"] .users-count {
+        background: #f1f5f9;
+        border-color: #dbe3f0;
+        color: #334155;
+    }
+    html[data-theme="light"] .form-section-title,
+    html[data-theme="light"] .users-header {
+        border-bottom-color: #e5e7eb;
+    }
+    html[data-theme="light"] .form-group label,
+    html[data-theme="light"] td,
+    html[data-theme="light"] td.mono {
+        color: #334155;
+    }
+    html[data-theme="light"] .form-control,
+    html[data-theme="light"] select.form-control {
+        background: #f8fafc;
+        border-color: #dbe3f0;
+        color: #0f172a;
+    }
+    html[data-theme="light"] .form-control:focus,
+    html[data-theme="light"] select.form-control:focus {
+        background: #ffffff;
+        border-color: #93c5fd;
+        box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+    html[data-theme="light"] th {
+        background: #f8fafc;
+        color: #64748b;
+        border-bottom-color: #dbe3f0;
+    }
+    html[data-theme="light"] td {
+        border-bottom-color: #e5e7eb;
+        background: #ffffff;
+    }
+    html[data-theme="light"] .user-row:hover td {
+        background: #f8fafc;
+    }
+    html[data-theme="light"] .user-row:hover td:first-child {
+        box-shadow: inset 3px 0 0 #2563eb;
+    }
+    html[data-theme="light"] .btn-profile {
+        color: #1d4ed8;
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+    html[data-theme="light"] .btn-profile:hover {
+        color: #ffffff;
+        background: #2563eb;
+        border-color: #2563eb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Organization Header -->
+<div class="org-header-mini">
+    <div class="org-header-top">
+        <div>
+            <div class="org-header-left-row">
+                <i class="fas fa-users org-header-icon"></i>
+                <div>
+                    <h2 class="org-header-title">{{ org.name }} - Users</h2>
+                    <div class="org-name-badge">
+                        <i class="fas fa-building"></i> {{ org.code }}
+                    </div>
+                </div>
+            </div>
+            <p class="org-header-desc">
+                <i class="fas fa-shield-alt"></i> Manage organization admins, end users, and face authentication readiness.
+            </p>
+        </div>
+
+        <a class="btn btn-outline" href="{{ url_for('organization.organization_detail', org_id=org.id) }}">
+            <i class="fas fa-folder-open"></i> Open Organization
+        </a>
+    </div>
+</div>
+
+<div class="grid grid-2">
+    <!-- Add User Form Card -->
+    <div class="form-card form-card-padded">
+        <div class="form-section-title">
+            <i class="fas fa-user-plus"></i>
+            <h3>Add New User</h3>
+        </div>
+        
+        <form method="post" id="addUserForm">
+            <div class="form-group">
+                <label>
+                    <i class="fas fa-user"></i> Full Name
+                    <span class="required">*</span>
+                </label>
+                <input class="form-control" id="full_name" type="text" name="full_name" placeholder="e.g., John Doe" required>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <i class="fas fa-envelope"></i> Email
+                    <span class="required">*</span>
+                </label>
+                <input class="form-control" id="email" type="email" name="email" placeholder="e.g., john@acme.com" required>
+                <div class="form-hint">
+                    <i class="fas fa-info-circle"></i> Used for notifications and password recovery
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <i class="fas fa-at"></i> Username
+                    <span class="required">*</span>
+                </label>
+                <input class="form-control" id="username" type="text" name="username" placeholder="e.g., johndoe" required>
+                <div class="form-hint">
+                    <i class="fas fa-info-circle"></i> Unique login identifier
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <i class="fas fa-lock"></i> Password
+                    <span class="required">*</span>
+                </label>
+                <input class="form-control" id="password" type="password" name="password" placeholder="Enter secure password" required>
+                <div class="password-strength" id="passwordStrength">
+                    <div class="strength-bar" id="strengthBar"></div>
+                </div>
+                <div class="strength-text" id="strengthText"></div>
+                <div class="form-hint">
+                    <i class="fas fa-shield-alt"></i> Minimum 8 characters with letters and numbers
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <i class="fas fa-shield-alt"></i> Role
+                </label>
+                <select class="form-control" id="role_name" name="role_name">
+                    <option value="user">User - Standard access</option>
+                    <option value="org_admin">Organization Admin - Full org control</option>
+                </select>
+                <div class="form-hint">
+                    <i class="fas fa-info-circle"></i> Admins can manage users and organization settings
+                </div>
+            </div>
+            
+            <button class="btn btn-create" type="submit" id="submitBtn">
+                <i class="fas fa-plus-circle"></i> Create User
+            </button>
+        </form>
+    </div>
+    
+    <!-- Existing Users Card -->
+    <div class="users-table-card">
+        <div class="users-header">
+            <div class="users-header-title-row">
+                <i class="fas fa-users"></i>
+                <h3>Existing Users</h3>
+            </div>
+            {% if users %}
+            <div class="users-count">
+                <i class="fas fa-user-check"></i> {{ users|length }} Total
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if users %}
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-user"></i> Name</th>
+                            <th><i class="fas fa-at"></i> Username</th>
+                            <th><i class="fas fa-shield-alt"></i> Role</th>
+                            <th><i class="fas fa-heartbeat"></i> Status</th>
+                            <th><i class="fas fa-face-smile"></i> Face Status</th>
+                            <th><i class="fas fa-cog"></i> Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in users %}
+                        <tr class="user-row">
+                            <td>
+                                <div class="user-name">
+                                    <i class="fas fa-user-circle"></i>
+                                    <strong>{{ item.user.full_name }}</strong>
+                                </div>
+                            </td>
+                            <td class="mono">{{ item.user.username }}</td>
+                            <td>
+                                {% if item.user.role_name == 'super_admin' %}
+                                    <span class="role-badge role-super-admin">
+                                        <i class="fas fa-crown"></i> super_admin
+                                    </span>
+                                {% elif item.user.role_name == 'org_admin' %}
+                                    <span class="role-badge role-org-admin">
+                                        <i class="fas fa-user-tie"></i> org_admin
+                                    </span>
+                                {% else %}
+                                    <span class="role-badge role-user">
+                                        <i class="fas fa-user"></i> user
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.user.is_active %}
+                                    <span class="status-badge status-active">
+                                        <i class="fas fa-check-circle"></i> Active
+                                    </span>
+                                {% else %}
+                                    <span class="status-badge status-inactive">
+                                        <i class="fas fa-ban"></i> Inactive
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.face_registered %}
+                                    <span class="status-badge face-registered">
+                                        <i class="fas fa-check-circle"></i> Registered
+                                    </span>
+                                {% else %}
+                                    <span class="status-badge face-not-registered">
+                                        <i class="fas fa-exclamation-triangle"></i> Not Registered
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a class="btn btn-outline btn-profile" href="{{ url_for('users.user_profile', user_id=item.user.id) }}">
+                                    <i class="fas fa-id-card"></i> Profile
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-users-slash"></i>
+                <h3>No Users Found</h3>
+                <p>Create the first user for this organization to get started.</p>
+                <div class="form-hint centered">
+                    <i class="fas fa-info-circle"></i> Use the form on the left to add users
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick Stats Footer -->
+<div class="users-footer">
+    <div class="users-footer-pills">
+        <div class="pill pill-green">
+            <i class="fas fa-check-circle"></i> Active Users: {{ users|selectattr('user.is_active', 'equalto', true)|list|length if users else 0 }}
+        </div>
+        <div class="pill pill-purple">
+            <i class="fas fa-face-smile"></i> Face Registered: {{ users|selectattr('face_registered', 'equalto', true)|list|length if users else 0 }}
+        </div>
+        <div class="pill pill-amber">
+            <i class="fas fa-user-tie"></i> Org Admins: {{ users|selectattr('user.role_name', 'equalto', 'org_admin')|list|length if users else 0 }}
+        </div>
+    </div>
+    <div class="form-hint">
+        <i class="fas fa-robot"></i> AI face authentication ready for registered users
+    </div>
+</div>
+
+<script>
+    // Password strength checker
+    const passwordInput = document.getElementById('password');
+    const strengthBar = document.getElementById('strengthBar');
+    const strengthText = document.getElementById('strengthText');
+    
+    function checkPasswordStrength(password) {
+        let strength = 0;
+        
+        if (password.length >= 8) strength++;
+        if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
+        if (password.match(/\d/)) strength++;
+        if (password.match(/[^a-zA-Z\d]/)) strength++;
+        
+        return strength;
+    }
+    
+    function updateStrengthIndicator() {
+        const password = passwordInput.value;
+        const strength = checkPasswordStrength(password);
+        
+        if (password.length === 0) {
+            strengthBar.className = 'strength-bar';
+            strengthBar.style.width = '0%';
+            strengthText.textContent = '';
+            return;
+        }
+        
+        if (strength <= 1) {
+            strengthBar.className = 'strength-bar strength-weak';
+            strengthText.textContent = 'Weak password';
+            strengthText.style.color = '#ff5a7a';
+        } else if (strength === 2) {
+            strengthBar.className = 'strength-bar strength-medium';
+            strengthText.textContent = 'Medium password';
+            strengthText.style.color = '#ffc23d';
+        } else {
+            strengthBar.className = 'strength-bar strength-strong';
+            strengthText.textContent = 'Strong password';
+            strengthText.style.color = '#1fd18a';
+        }
+    }
+    
+    if (passwordInput) {
+        passwordInput.addEventListener('input', updateStrengthIndicator);
+    }
+    
+    // Form submission with loading state
+    const form = document.getElementById('addUserForm');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Basic validation
+            const fullName = document.getElementById('full_name')?.value.trim();
+            const email = document.getElementById('email')?.value.trim();
+            const username = document.getElementById('username')?.value.trim();
+            const password = document.getElementById('password')?.value;
+            
+            let isValid = true;
+            
+            if (!fullName) {
+                document.getElementById('full_name').style.borderColor = '#ff5a7a';
+                isValid = false;
+            }
+            if (!email) {
+                document.getElementById('email').style.borderColor = '#ff5a7a';
+                isValid = false;
+            }
+            if (!username) {
+                document.getElementById('username').style.borderColor = '#ff5a7a';
+                isValid = false;
+            }
+            if (!password || password.length < 6) {
+                document.getElementById('password').style.borderColor = '#ff5a7a';
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                e.preventDefault();
+                // Show error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'flash flash-danger';
+                errorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please fill in all required fields correctly.';
+                errorDiv.style.marginBottom = '16px';
+                errorDiv.style.borderRadius = '12px';
+                
+                const container = document.querySelector('.container-card');
+                const existingFlash = container.querySelector('.flash');
+                if (existingFlash) existingFlash.remove();
+                container.insertBefore(errorDiv, container.firstChild);
+                
+                setTimeout(() => {
+                    errorDiv.style.opacity = '0';
+                    setTimeout(() => errorDiv.remove(), 300);
+                }, 4000);
+                return;
+            }
+            
+            // Show loading state
+            submitBtn.classList.add('loading');
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Creating User...';
+            submitBtn.disabled = true;
+        });
+    }
+    
+    // Real-time validation clear
+    const inputs = ['full_name', 'email', 'username', 'password'];
+    inputs.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('input', function() {
+                this.style.borderColor = '';
+            });
+        }
+    });
+    
+    // Auto-suggest username from email
+    const emailField = document.getElementById('email');
+    const usernameField = document.getElementById('username');
+    
+    if (emailField && usernameField) {
+        emailField.addEventListener('blur', function() {
+            if (!usernameField.value.trim() && emailField.value.trim()) {
+                const suggestedUsername = emailField.value.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (suggestedUsername) {
+                    usernameField.value = suggestedUsername;
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

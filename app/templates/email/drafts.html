@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+
+{% block title %}Draft Replies | MerchOps AI{% endblock %}
+{% block page_title %}Draft Replies{% endblock %}
+{% block page_subtitle %}AI-generated replies for registered senders, awaiting your review.{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dr-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 14px; }
+    .dr-title    { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
+    .dr-subtitle { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-bottom: 24px;
+    }
+    .stat-box {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: var(--r);
+        padding: 18px 20px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        transition: border-color .15s, transform .15s;
+    }
+    .stat-box:hover { border-color: rgba(127,119,221,.35); transform: translateY(-2px); }
+    .stat-icon-wrap {
+        width: 42px; height: 42px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 17px; flex-shrink: 0;
+    }
+    .si-blue  { background: var(--accent-dim);  color: var(--accent); }
+    .si-amber { background: var(--amber-dim);   color: var(--amber); }
+    .si-green { background: var(--green-dim);   color: var(--green); }
+
+    .search-wrap { position: relative; width: 260px; }
+    .search-wrap i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 12px; }
+    .search-input {
+        width: 100%;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 999px;
+        padding: 8px 14px 8px 34px;
+        color: var(--text);
+        font-size: 12.5px;
+        outline: none;
+        font-family: var(--font);
+        transition: border-color .15s, box-shadow .15s;
+    }
+    .search-input:focus { border-color: rgba(127,119,221,.52); box-shadow: 0 0 0 3px rgba(127,119,221,.10); }
+    .search-input::placeholder { color: var(--muted); }
+
+    .table-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: var(--r-lg);
+        overflow: hidden;
+    }
+    .table-card-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 16px 22px;
+        border-bottom: 1px solid var(--card-border);
+        flex-wrap: wrap; gap: 10px;
+    }
+    .table-card-header-left { display: flex; align-items: center; gap: 9px; }
+    .table-card-header-left i { color: var(--accent); font-size: 15px; }
+    .table-card-header-left span { font-size: 14px; font-weight: 600; color: var(--text); }
+    .count-pill { background: rgba(127,119,221,.10); border: 1px solid rgba(127,119,221,.20); color: var(--text-2); font-size: 10.5px; font-weight: 600; padding: 3px 11px; border-radius: 999px; }
+
+    table.drafts-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .drafts-tbl th {
+        padding: 10px 14px; text-align: left;
+        font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+        color: var(--muted); border-bottom: 1px solid var(--card-border);
+        background: rgba(127,119,221,.04); white-space: nowrap;
+    }
+    .drafts-tbl td { padding: 12px 14px; border-bottom: 1px solid rgba(42,42,74,.5); vertical-align: middle; color: var(--text-2); }
+
+    .drafts-tbl tbody tr:last-child td { border-bottom: none; }
+ 
+ .drafts-tbl tbody tr:nth-child(even) td {
+    background: var(--table-stripe);
+}
+
+.drafts-tbl tbody tr:hover td {
+    background: var(--table-hover);
+}
+
+    .sender-cell { display: flex; align-items: center; gap: 10px; }
+    .sender-avatar {
+        width: 34px; height: 34px; border-radius: 50%;
+        background: linear-gradient(135deg, rgba(127,119,221,.22), rgba(55,138,221,.12));
+        border: 1px solid rgba(127,119,221,.28);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px; font-weight: 700; color: var(--accent); flex-shrink: 0;
+        font-family: var(--font-mono); text-transform: uppercase;
+    }
+    .sender-name  { font-weight: 600; color: var(--text); font-size: 12.5px; }
+    .sender-email { font-size: 11px; color: var(--muted); }
+
+    .subject-text { color: var(--text); font-weight: 500; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .org-text     { color: var(--muted); font-size: 12px; }
+    .date-text    { color: var(--muted); font-size: 11.5px; white-space: nowrap; font-family: var(--font-mono); }
+
+    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
+    .badge-draft { background: rgba(127,119,221,.10); color: #a09df5; border: 1px solid rgba(127,119,221,.22); }
+    .badge-sent  { background: rgba(29,158,117,.10);  color: #2ec990;  border: 1px solid rgba(29,158,117,.22); }
+
+    .btn-open {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 14px; border-radius: 999px;
+        font-size: 11.5px; font-weight: 600;
+        background: rgba(127,119,221,.08);
+        border: 1px solid rgba(127,119,221,.22);
+        color: var(--accent);
+        text-decoration: none;
+        transition: all .15s ease;
+        font-family: var(--font);
+    }
+    .btn-open:hover {
+        background: rgba(127,119,221,.16);
+        border-color: rgba(127,119,221,.45);
+        box-shadow: 0 0 10px rgba(127,119,221,.18);
+        color: var(--text);
+        transform: translateY(-1px);
+    }
+
+    .empty-icon {
+        width: 64px; height: 64px; border-radius: 50%;
+        background: rgba(127,119,221,.07); border: 1px solid rgba(127,119,221,.14);
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 18px; font-size: 26px; color: var(--muted);
+    }
+
+    .tbl-scroll { overflow-x: auto; }
+    .badge-dot  { font-size: 7px; }
+    .id-cell    { font-family: var(--font-mono); font-weight: 600; color: var(--muted); }
+
+    @media (max-width: 768px) {
+        .stats-row { grid-template-columns: 1fr; }
+        .search-wrap { width: 100%; }
+        .drafts-tbl th, .drafts-tbl td { padding: 9px 10px; font-size: 11.5px; }
+        .subject-text { max-width: 140px; }
+    }
+
+    /* Professional agent queue polish */
+    .dr-header {
+        background: linear-gradient(180deg, rgba(255,255,255,.026), rgba(255,255,255,.01)), var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 20px 22px;
+        align-items: center;
+    }
+    .dr-title { font-size: 19px; font-weight: 800; letter-spacing: 0; }
+    .dr-subtitle { color: var(--text-2); line-height: 1.55; }
+    .dr-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .dr-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 34px;
+        padding: 0 12px;
+        border-radius: 8px;
+        border: 1px solid var(--card-border);
+        background: rgba(148,163,184,.06);
+        color: var(--text);
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .stats-row { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+    .stat-box {
+        border-radius: 8px;
+        transform: none;
+        background: linear-gradient(180deg, rgba(255,255,255,.022), rgba(255,255,255,.01)), var(--card-bg);
+        position: relative;
+        overflow: hidden;
+    }
+    .stat-box:hover { transform: none; border-color: rgba(148,163,184,.28); }
+    .stat-box::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 3px;
+        background: rgba(33,212,253,.58);
+    }
+    .stat-icon-wrap {
+        border-radius: 8px;
+        background: rgba(148,163,184,.08);
+        border: 1px solid var(--card-border);
+        color: var(--text-2);
+    }
+    .stat-val {
+        color: var(--text);
+        font-family: var(--font-mono);
+        font-size: 26px;
+        font-weight: 800;
+    }
+    .stat-label {
+        color: var(--muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        font-weight: 800;
+    }
+    .table-card { border-radius: 12px; }
+    .table-card-header { background: rgba(148,163,184,.025); }
+    .drafts-tbl th {
+        background: rgba(148,163,184,.045);
+        color: var(--muted);
+    }
+    .drafts-tbl td { border-bottom: 1px solid var(--card-border); }
+    .drafts-tbl tbody tr:nth-child(even) td { background: transparent; }
+    .drafts-tbl tbody tr:hover td { background: rgba(148,163,184,.055); }
+    .sender-avatar {
+        border-radius: 9px;
+        background: rgba(148,163,184,.08);
+        border-color: var(--card-border);
+        color: var(--text);
+        font-family: var(--font);
+    }
+    .badge { border-radius: 8px; }
+    .badge-draft {
+        background: rgba(245,158,11,.08);
+        color: var(--amber);
+        border-color: rgba(245,158,11,.22);
+    }
+    .badge-sent {
+        background: rgba(34,197,94,.08);
+        color: var(--green);
+        border-color: rgba(34,197,94,.22);
+    }
+    .btn-open {
+        border-radius: 8px;
+        background: rgba(33,212,253,.07);
+        border-color: rgba(33,212,253,.22);
+        color: var(--text);
+    }
+    .btn-open:hover {
+        box-shadow: none;
+        transform: none;
+        background: rgba(33,212,253,.12);
+        border-color: rgba(33,212,253,.32);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="dr-header">
+    <div>
+        <div class="dr-title">Draft Replies</div>
+        <div class="dr-subtitle">Agent-prepared replies for approved senders. Review, adjust, and send with confidence.</div>
+    </div>
+    <div class="dr-actions">
+        <a class="dr-link" href="{{ url_for('email_agent.inbox') }}">
+            <i class="fas fa-inbox"></i> Inbox
+        </a>
+        <a class="dr-link" href="{{ url_for('email_agent.monitor') }}">
+            <i class="fas fa-chart-line"></i> Monitor
+        </a>
+        <div class="search-wrap">
+            <i class="fas fa-search"></i>
+            <input class="search-input" id="draftSearch" type="text" placeholder="Search drafts...">
+        </div>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+    <div class="stat-box">
+        <div class="stat-icon-wrap si-blue"><i class="fas fa-file-alt"></i></div>
+        <div>
+            <div class="stat-label">Total Drafts</div>
+            <div class="stat-val">{{ drafts|length }}</div>
+        </div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-icon-wrap si-amber"><i class="fas fa-hourglass-half"></i></div>
+        <div>
+            <div class="stat-label">Pending Review</div>
+            <div class="stat-val">{{ drafts|selectattr('status','equalto','Draft')|list|length }}</div>
+        </div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-icon-wrap si-green"><i class="fas fa-paper-plane"></i></div>
+        <div>
+            <div class="stat-label">Sent</div>
+            <div class="stat-val">{{ drafts|selectattr('status','equalto','Sent')|list|length }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="table-card">
+    <div class="table-card-header">
+        <div class="table-card-header-left">
+            <i class="fas fa-inbox"></i>
+            <span>All Drafts</span>
+        </div>
+        {% if drafts %}
+        <span class="count-pill">{{ drafts|length }} records</span>
+        {% endif %}
+    </div>
+
+    {% if drafts %}
+    <div class="tbl-scroll">
+        <table class="drafts-tbl" id="draftsTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Sender</th>
+                    <th>Subject</th>
+                    <th>Organization</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for draft in drafts %}
+                <tr class="draft-row">
+                    <td class="id-cell">{{ draft.id }}</td>
+                    <td>
+                        <div class="sender-cell">
+                            <div class="sender-avatar">
+                                {{ (draft.sender_name or draft.recipient_email or '?')[0]|upper }}
+                            </div>
+                            <div>
+                                <div class="sender-name">{{ draft.sender_name or '-' }}</div>
+                                <div class="sender-email">{{ draft.recipient_email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="subject-text" title="{{ draft.subject_line }}">{{ draft.subject_line }}</div>
+                    </td>
+                    <td class="org-text">{{ draft.organization_name or '-' }}</td>
+                    <td>
+                        {% if draft.status == 'Sent' %}
+                            <span class="badge badge-sent"><i class="fas fa-check-circle"></i> Sent</span>
+                        {% else %}
+                            <span class="badge badge-draft"><i class="fas fa-circle badge-dot"></i> Draft</span>
+                        {% endif %}
+                    </td>
+                    <td class="date-text">
+                        {% if draft.created_at %}
+                            {{ draft.created_at.strftime('%d %b %Y, %H:%M') if draft.created_at.strftime is defined else draft.created_at }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a class="btn-open" href="{{ url_for('email_agent.draft_detail', draft_id=draft.id) }}">
+                            <i class="fas fa-arrow-right"></i> Open
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+        <h3>No drafts yet</h3>
+        <p>Draft replies for registered senders will appear here once AI processes incoming emails.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('draftSearch').addEventListener('input', function () {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('.draft-row').forEach(function (row) {
+        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+});
+</script>
+{% endblock %}

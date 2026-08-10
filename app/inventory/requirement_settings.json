@@ -1,0 +1,34 @@
+{
+  "settings": [
+    {
+      "Brand": "AWDIS - ATA",
+      "Distributor": "Citadel Brands LLC",
+      "RequirementMonths": 6.0,
+      "UpdatedAt": "2026-06-01"
+    },
+    {
+      "Brand": "AWDIS - JHA",
+      "Distributor": "Citadel Brands LLC",
+      "RequirementMonths": 9.0,
+      "UpdatedAt": "2026-06-01"
+    },
+    {
+      "Brand": "AWDIS - JCA",
+      "Distributor": "Citadel Brands LLC",
+      "RequirementMonths": 14.0,
+      "UpdatedAt": "2026-06-01"
+    },
+    {
+      "Brand": "AWDIS - JTA",
+      "Distributor": "Citadel Brands LLC",
+      "RequirementMonths": 8.0,
+      "UpdatedAt": "2026-06-01"
+    },
+    {
+      "Brand": "WOODBROOK - WBA",
+      "Distributor": "Citadel Brands LLC",
+      "RequirementMonths": 6.0,
+      "UpdatedAt": "2026-06-01"
+    }
+  ]
+}

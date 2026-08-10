@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}{% if mode == 'edit' %}Edit Email Account{% else %}Add Email Account{% endif %}{% endblock %}
+{% block page_title %}{% if mode == 'edit' %}Edit Email Account{% else %}Add Email Account{% endif %}{% endblock %}
+{% block page_subtitle %}Register a mailbox for draft-based response flow. External accounts are supported.{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h3 class="section-title">{% if mode == 'edit' %}Edit Registered Email{% else %}Register Email Account{% endif %}</h3>
+
+    <form method="post">
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Organization</label>
+                <select class="form-control" name="org_id" required>
+                    <option value="">Select Organization</option>
+                    {% for org in organizations %}
+                    <option value="{{ org.id }}"
+                        {% if account and account.org_id == org.id %}selected{% endif %}>
+                        {{ org.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>User (Optional)</label>
+                <select class="form-control" name="user_id">
+                    <option value="">No specific user</option>
+                    {% for user in users %}
+                    <option value="{{ user.id }}"
+                        {% if account and account.user_id == user.id %}selected{% endif %}>
+                        {{ user.full_name }} ({{ user.username }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Account Name</label>
+                <input class="form-control" type="text" name="account_name"
+                       value="{{ account.account_name if account else '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Email Address</label>
+                <input class="form-control" type="email" name="email_address"
+                       value="{{ account.email_address if account else '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Password / App Password</label>
+                <input class="form-control" type="text" name="email_password"
+                       placeholder="{% if mode == 'edit' %}Leave blank to keep existing{% else %}Enter password{% endif %}">
+            </div>
+
+            <div class="form-group">
+                <label>Provider</label>
+                <input class="form-control" type="text" name="provider"
+                       value="{{ account.provider if account else 'custom' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>SMTP Server</label>
+                <input class="form-control" type="text" name="smtp_server"
+                       value="{{ account.smtp_server if account else '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>SMTP Port</label>
+                <input class="form-control" type="number" name="smtp_port"
+                       value="{{ account.smtp_port if account else 587 }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>IMAP Server</label>
+                <input class="form-control" type="text" name="imap_server"
+                       value="{{ account.imap_server if account else '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>IMAP Port</label>
+                <input class="form-control" type="number" name="imap_port"
+                       value="{{ account.imap_port if account else 993 }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Check Interval Minutes</label>
+                <input class="form-control" type="number" name="check_interval_minutes"
+                       value="{{ account.check_interval_minutes if account else 5 }}" required>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:24px; flex-wrap:wrap; margin-top:18px;">
+            <label style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" name="auto_reply_enabled"
+                       {% if account and account.auto_reply_enabled %}checked{% elif not account %}checked{% endif %}>
+                Enable agent reading / draft response
+            </label>
+
+            <label style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" name="is_active"
+                       {% if account and account.is_active %}checked{% elif not account %}checked{% endif %}>
+                Active
+            </label>
+        </div>
+
+        <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn" type="submit">
+                {% if mode == 'edit' %}Update Email Account{% else %}Register Email Account{% endif %}
+            </button>
+            <a class="btn btn-outline" href="{{ url_for('email_agent.accounts') }}">Back</a>
+        </div>
+    </form>
+</div>
+
+<div class="card" style="margin-top:18px;">
+    <h3 class="section-title">Usage Notes</h3>
+    <p class="muted">
+        This screen is for response mailboxes only. The agent will only read from accounts that are registered here,
+        active, and reading-enabled. External business accounts are supported as long as SMTP and IMAP settings are correct.
+    </p>
+</div>
+{% endblock %}

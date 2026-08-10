@@ -1,0 +1,607 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory Alerts | MerchOps AI{% endblock %}
+
+{% block page_title %}Inventory Alerts{% endblock %}
+
+{% block page_subtitle %}Proactive alerts generated from saved inventory batch changes.{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Inventory Alerts specific styles */
+    .alerts-header {
+        background: linear-gradient(135deg, rgba(33,212,253,0.08), rgba(36,107,255,0.05));
+        border-radius: 20px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(33,212,253,0.2);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+    
+   .sync-badge {
+    background: var(--hover-bg);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+    
+   .action-card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    padding: 20px;
+    margin-bottom: 24px;
+    transition: all 0.3s ease;
+    color: var(--text);
+}
+    
+    .action-card:hover {
+        border-color: rgba(33,212,253,0.4);
+        box-shadow: 0 4px 20px rgba(33,212,253,0.1);
+    }
+    
+    .action-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(33,212,253,0.15);
+    }
+    
+    .action-title i {
+        font-size: 24px;
+        color: #21d4fd;
+    }
+    
+    .action-title h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+    
+   .btn-generate {
+    background: linear-gradient(90deg, var(--accent), #246bff);
+    border: 1px solid var(--border);
+    padding: 10px 24px;
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.btn-generate:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(33,212,253,0.25);
+    filter: brightness(1.05);
+}
+    
+    .btn-filter {
+        background: rgba(33,212,253,0.1);
+        border: 1px solid rgba(33,212,253,0.3);
+        padding: 10px 20px;
+    }
+    
+    .btn-filter:hover {
+        background: rgba(33,212,253,0.2);
+        border-color: rgba(33,212,253,0.5);
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    
+    .stat-card-enhanced {
+    background: var(--card-bg);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    padding: 20px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    color: var(--text);
+}
+    
+    .stat-card-enhanced:hover {
+        transform: translateY(-3px);
+        border-color: rgba(33,212,253,0.5);
+        box-shadow: 0 8px 28px rgba(33,212,253,0.15);
+    }
+    
+    .stat-card-enhanced::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #21d4fd, #246bff);
+    }
+    
+    .stat-icon {
+        font-size: 28px;
+        color: #21d4fd;
+        margin-bottom: 12px;
+    }
+    
+    .stat-label-enhanced {
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+    }
+    
+    .stat-value-enhanced {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+}
+    
+    .stat-note-enhanced {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 8px;
+    }
+    
+    .alerts-card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    color: var(--text);
+}
+    
+    .alerts-header-section {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px;
+        border-bottom: 1px solid rgba(33,212,253,0.15);
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    .alerts-header-section h3 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .alerts-header-section h3 i {
+        color: #21d4fd;
+    }
+    
+    .alert-count {
+        background: rgba(33,212,253,0.15);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .alerts-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    
+    .alerts-table th {
+    padding: 14px 10px;
+    background: var(--table-header-bg);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+}
+    
+    .alerts-table td {
+        padding: 12px 10px;
+        border-bottom: 1px solid rgba(33,212,253,0.06);
+        vertical-align: middle;
+    }
+    
+    .alerts-table tr:hover {
+    background: var(--hover-bg);
+}
+    .severity-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    
+    .severity-critical {
+        background: rgba(255,90,122,0.15);
+        color: #ff5a7a;
+        border: 1px solid rgba(255,90,122,0.3);
+    }
+    
+    .severity-high {
+        background: rgba(255,194,61,0.15);
+        color: #ffc23d;
+        border: 1px solid rgba(255,194,61,0.3);
+    }
+    
+    .severity-medium {
+        background: rgba(33,212,253,0.12);
+        color: #21d4fd;
+        border: 1px solid rgba(33,212,253,0.25);
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    
+    .status-open {
+        background: rgba(255,90,122,0.15);
+        color: #ff5a7a;
+        border: 1px solid rgba(255,90,122,0.3);
+    }
+    
+    .status-resolved {
+        background: rgba(31,209,138,0.15);
+        color: #1fd18a;
+        border: 1px solid rgba(31,209,138,0.3);
+    }
+    
+    .alert-type-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        background: rgba(33,212,253,0.1);
+        color: #21d4fd;
+    }
+    
+    .sku-cell {
+        font-family: monospace;
+        font-weight: 700;
+        color: #21d4fd;
+    }
+    
+    .value-change {
+        font-weight: 600;
+    }
+    
+    .value-old {
+        color: #ff5a7a;
+        text-decoration: line-through;
+        font-size: 11px;
+        display: block;
+    }
+    
+    .value-new {
+        color: #1fd18a;
+        font-size: 12px;
+        display: block;
+    }
+    
+    .btn-resolve {
+        background: rgba(31,209,138,0.1);
+        border: 1px solid rgba(31,209,138,0.3);
+        color: #1fd18a;
+        padding: 6px 14px;
+        font-size: 12px;
+    }
+    
+    .btn-resolve:hover {
+        background: rgba(31,209,138,0.2);
+        border-color: rgba(31,209,138,0.5);
+        transform: translateY(-1px);
+    }
+    
+   .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text);
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+}
+    
+    .empty-state i {
+        font-size: 48px;
+        color: var(--muted);
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+    
+    .empty-state h3 {
+        margin-bottom: 8px;
+    }
+    
+    .empty-state p {
+        color: var(--muted);
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .stat-card-enhanced, .alerts-card {
+        animation: fadeIn 0.3s ease forwards;
+    }
+    
+    .action-buttons-group {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    .message-cell {
+        max-width: 250px;
+        font-size: 12px;
+        color: var(--muted);
+    }
+    .dashboard-title {
+    color: var(--text);
+    font-weight: 700;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Alerts Header -->
+<div class="alerts-header">
+    <div style="display: flex; align-items: center; gap: 16px;">
+        <i class="fas fa-bell" style="font-size: 32px; color: #21d4fd;"></i>
+        <div>
+            <h2 class="dashboard-title">
+    Inventory Alerts
+</h2>
+            <p style="color: var(--muted); margin: 4px 0 0;">
+                <i class="fas fa-exclamation-triangle"></i> Track shortages, coverage drops, new order requirements, and risk escalation.
+            </p>
+        </div>
+    </div>
+    <div class="sync-badge">
+        <i class="fas fa-clock"></i> Last Sync: {{ last_sync }}
+    </div>
+</div>
+
+<!-- Action Card -->
+<div class="action-card">
+    <div class="action-title">
+        <i class="fas fa-cogs"></i>
+        <h3>Alert Management</h3>
+    </div>
+    
+    <div class="action-buttons-group">
+        <form method="post" action="{{ url_for('alerts.generate') }}">
+            <button class="btn btn-generate" type="submit">
+                <i class="fas fa-sync-alt"></i> Generate Alerts from Latest Batches
+            </button>
+        </form>
+        
+        <a class="btn btn-filter" href="{{ url_for('alerts.index', show_resolved=0) }}">
+            <i class="fas fa-bell"></i> Open Alerts
+        </a>
+        <a class="btn btn-filter" href="{{ url_for('alerts.index', show_resolved=1) }}">
+            <i class="fas fa-history"></i> All Alerts
+        </a>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card-enhanced">
+        <div class="stat-icon"><i class="fas fa-bell"></i></div>
+        <div class="stat-label-enhanced">Total Alerts</div>
+        <div class="stat-value-enhanced">{{ summary.total_alerts or 0 }}</div>
+        <div class="stat-note-enhanced">Current view result</div>
+    </div>
+    
+    <div class="stat-card-enhanced">
+        <div class="stat-icon"><i class="fas fa-skull-crosswalk"></i></div>
+        <div class="stat-label-enhanced">Critical</div>
+        <div class="stat-value-enhanced" style="color: #ff5a7a;">{{ summary.critical_count or 0 }}</div>
+        <div class="stat-note-enhanced">Immediate attention needed</div>
+    </div>
+    
+    <div class="stat-card-enhanced">
+        <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+        <div class="stat-label-enhanced">High</div>
+        <div class="stat-value-enhanced" style="color: #ffc23d;">{{ summary.high_count or 0 }}</div>
+        <div class="stat-note-enhanced">High-priority risk changes</div>
+    </div>
+    
+    <div class="stat-card-enhanced">
+        <div class="stat-icon"><i class="fas fa-chart-simple"></i></div>
+        <div class="stat-label-enhanced">Medium</div>
+        <div class="stat-value-enhanced" style="color: #21d4fd;">{{ summary.medium_count or 0 }}</div>
+        <div class="stat-note-enhanced">Monitor and review</div>
+    </div>
+</div>
+
+<!-- Alerts List Card -->
+<div class="alerts-card">
+    <div class="alerts-header-section">
+        <h3>
+            <i class="fas fa-list"></i>
+            Alert List
+        </h3>
+        {% if alerts %}
+        <div class="alert-count">
+            <i class="fas fa-database"></i> {{ alerts|length }} alerts displayed
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if alerts %}
+    <div class="table-container">
+        <table class="alerts-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Severity</th>
+                    <th>Brand</th>
+                    <th>Style</th>
+                    <th>SKU</th>
+                    <th>Change</th>
+                    <th>Message</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in alerts %}
+                <tr>
+                    <td>
+                        <span class="alert-type-badge">
+                            <i class="fas fa-{% if 'stock' in a.alert_type|lower %}box{% elif 'coverage' in a.alert_type|lower %}chart-line{% elif 'risk' in a.alert_type|lower %}exclamation-triangle{% else %}bell{% endif %}"></i>
+                            {{ a.alert_type }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if a.severity == "Critical" %}
+                            <span class="severity-badge severity-critical">
+                                <i class="fas fa-skull-crosswalk"></i> Critical
+                            </span>
+                        {% elif a.severity == "High" %}
+                            <span class="severity-badge severity-high">
+                                <i class="fas fa-arrow-up"></i> High
+                            </span>
+                        {% else %}
+                            <span class="severity-badge severity-medium">
+                                <i class="fas fa-chart-line"></i> Medium
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ a.Brand or '-' }}</strong></td>
+                    <td>{{ a.Style or '-' }}</td>
+                    <td class="sku-cell">{{ a.SKU }}</td>
+                    <td>
+                        <div class="value-change">
+                            <span class="value-old">{{ a.old_value or 'N/A' }}</span>
+                            <i class="fas fa-arrow-right arrow-icon" style="font-size: 10px; margin: 0 4px;"></i>
+                            <span class="value-new">{{ a.new_value or 'N/A' }}</span>
+                        </div>
+                    </td>
+                    <td class="message-cell">
+                        <i class="fas fa-info-circle" style="color: #21d4fd; margin-right: 6px;"></i>
+                        {{ a.message }}
+                    </td>
+                    <td>
+                        {% if a.is_resolved %}
+                            <span class="status-badge status-resolved">
+                                <i class="fas fa-check-circle"></i> Resolved
+                            </span>
+                        {% else %}
+                            <span class="status-badge status-open">
+                                <i class="fas fa-exclamation-circle"></i> Open
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td style="white-space: nowrap;">{{ a.created_at }}</td>
+                    <td>
+                        {% if not a.is_resolved %}
+                        <form method="post" action="{{ url_for('alerts.resolve', alert_id=a.id) }}" style="display: inline;">
+                            <button class="btn btn-resolve" type="submit" onclick="return confirm('Mark this alert as resolved?');">
+                                <i class="fas fa-check"></i> Resolve
+                            </button>
+                        </form>
+                        {% else %}
+                        <span class="pill" style="background: rgba(31,209,138,0.1); color: #1fd18a;">
+                            <i class="fas fa-check-circle"></i> Done
+                        </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- AI Insight Footer -->
+    <div style="margin: 16px 24px 24px 24px; padding: 16px; background: var(--card-bg); border-radius: 16px; border-left: 3px solid var(--accent);">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <i class="fas fa-robot" style="color: #21d4fd; font-size: 18px;"></i>
+            <p style="margin: 0; font-size: 13px; color: var(--muted);">
+                <strong>AI Analysis:</strong> 
+                {% set critical_count = summary.critical_count or 0 %}
+                {% set high_count = summary.high_count or 0 %}
+                {% set unresolved = alerts|selectattr('is_resolved', 'equalto', false)|list|length if alerts else 0 %}
+                {% if critical_count > 0 %}
+                    ⚠️ <strong>{{ critical_count }} critical alerts</strong> require immediate action.
+                {% endif %}
+                {% if high_count > 0 %}
+                    📈 {{ high_count }} high-priority alerts need review.
+                {% endif %}
+                {% if unresolved > 0 %}
+                    📋 {{ unresolved }} unresolved alerts pending.
+                {% endif %}
+                {% if critical_count == 0 and high_count == 0 %}
+                    ✅ No critical or high alerts. Continue monitoring inventory levels.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-bell-slash"></i>
+        <h3>No alerts found</h3>
+        <p>Generate alerts from the latest two saved inventory batches to see proactive notifications.</p>
+        <form method="post" action="{{ url_for('alerts.generate') }}" style="margin-top: 16px;">
+            <button class="btn btn-generate" type="submit">
+                <i class="fas fa-sync-alt"></i> Generate Alerts Now
+            </button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Add hover effects and tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    // Add confirmation for resolve button if not already present
+    const resolveForms = document.querySelectorAll('.btn-resolve');
+    resolveForms.forEach(form => {
+        form.addEventListener('click', function(e) {
+            if (!confirm('⚠️ Mark this alert as resolved?\n\nThis action can be undone later if needed.')) {
+                e.preventDefault();
+            }
+        });
+    });
+    
+    // Highlight rows with critical severity
+    const rows = document.querySelectorAll('.alerts-table tbody tr');
+    rows.forEach(row => {
+        const severityCell = row.cells[1];
+        if (severityCell && severityCell.innerText.includes('Critical')) {
+            row.style.borderLeft = '3px solid #ff5a7a';
+        } else if (severityCell && severityCell.innerText.includes('High')) {
+            row.style.borderLeft = '3px solid #ffc23d';
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+
+{% block title %}Draft #{{ draft.id }} | MerchOps AI{% endblock %}
+{% block page_title %}Draft Detail{% endblock %}
+{% block page_subtitle %}Review, edit and send this AI-generated reply.{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dd-back {
+        display: inline-flex; align-items: center; gap: 7px;
+        font-size: 13px; color: var(--muted); text-decoration: none;
+        margin-bottom: 22px;
+        transition: color 0.2s;
+    }
+    .dd-back:hover { color: var(--accent); }
+
+    /* Layout */
+    .dd-layout {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 20px;
+        align-items: start;
+    }
+
+    /* Cards */
+    .dd-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: var(--r-lg);
+        overflow: hidden;
+        margin-bottom: 16px;
+        transition: border-color .15s;
+    }
+    .dd-card:hover { border-color: rgba(127,119,221,.32); }
+    .dd-card-header {
+        display: flex; align-items: center; gap: 10px;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--card-border);
+        background: rgba(127,119,221,.03);
+    }
+    .dd-card-header i    { color: var(--accent); font-size: 14px; }
+    .dd-card-header span { font-size: 13px; font-weight: 600; color: var(--text); }
+    .dd-card-body { padding: 18px 20px; }
+
+    /* Meta list */
+    .meta-list { display: flex; flex-direction: column; gap: 13px; }
+    .meta-item { display: flex; flex-direction: column; gap: 3px; }
+    .meta-key  { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); }
+    .meta-val  { font-size: 13px; color: var(--text); word-break: break-all; }
+    .meta-mono { font-family: var(--font-mono); }
+
+    /* Status badges */
+    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .badge-draft { background: rgba(127,119,221,.12); color: var(--accent); border: 1px solid rgba(127,119,221,.22); }
+    .badge-sent  { background: rgba(29,158,117,.12);  color: var(--green);  border: 1px solid rgba(29,158,117,.22); }
+    .badge-dot   { font-size: 7px; }
+
+    /* Action buttons */
+    .action-btn {
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        width: 100%; padding: 11px 18px; border-radius: var(--r);
+        font-size: 13px; font-weight: 600; cursor: pointer;
+        transition: all 0.2s; text-decoration: none; border: none;
+        font-family: var(--font);
+    }
+    .btn-send {
+        background: linear-gradient(135deg, var(--accent), #5b52cc);
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(127,119,221,.35);
+    }
+    .btn-send:hover {
+        background: linear-gradient(135deg, #9490e8, var(--accent));
+        box-shadow: 0 6px 18px rgba(127,119,221,.45);
+        transform: translateY(-1px);
+        color: #fff;
+    }
+    .btn-save {
+        background: rgba(127,119,221,.08);
+        border: 1px solid rgba(127,119,221,.22);
+        color: var(--accent);
+    }
+    .btn-save:hover {
+        background: rgba(127,119,221,.16);
+        border-color: rgba(127,119,221,.40);
+        color: var(--text);
+    }
+    .btn-disabled {
+        background: rgba(255,255,255,.04);
+        border: 1px solid rgba(255,255,255,.06);
+        color: var(--muted);
+        cursor: not-allowed;
+        opacity: .6;
+    }
+    .btn-actions { display: flex; flex-direction: column; gap: 10px; }
+
+    /* Tabs */
+    .dd-tabs {
+        display: flex; margin-bottom: 0;
+        border-bottom: 1px solid var(--card-border);
+        padding: 0 4px;
+    }
+    .dd-tab {
+        padding: 13px 20px; font-size: 13px; font-weight: 600;
+        color: var(--muted); border-bottom: 2px solid transparent;
+        cursor: pointer; transition: all .15s;
+        background: none; border-left: none; border-right: none; border-top: none;
+        font-family: var(--font);
+    }
+    .dd-tab:hover { color: var(--text); }
+    .dd-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .dd-tab-content { display: none; padding: 24px; }
+    .dd-tab-content.active { display: block; }
+
+    /* Form fields */
+    .form-group { margin-bottom: 18px; }
+    .form-label {
+        display: flex; align-items: center; gap: 7px;
+        font-size: 11px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.7px; color: var(--muted); margin-bottom: 8px;
+    }
+    .form-label i { color: var(--accent); font-size: 12px; }
+    .form-input {
+        width: 100%; padding: 11px 14px; border-radius: var(--r-sm);
+        border: 1px solid var(--card-border);
+        background: rgba(127,119,221,.04);
+        color: var(--text); font-size: 13px;
+        outline: none; transition: border-color .2s, box-shadow .2s;
+        box-sizing: border-box; font-family: var(--font);
+    }
+    .form-input:focus {
+        border-color: rgba(127,119,221,.52);
+        box-shadow: 0 0 0 3px rgba(127,119,221,.10);
+        background: rgba(127,119,221,.07);
+    }
+    .form-input::placeholder { color: var(--muted); }
+    .form-input[readonly] { opacity: .5; cursor: not-allowed; }
+    textarea.form-input { resize: vertical; line-height: 1.6; font-family: var(--font-mono); font-size: 12px; }
+
+    /* Email preview pane - iframe renders the actual email HTML in isolation */
+    .email-preview-frame {
+        width: 100%;
+        min-height: 420px;
+        border: none;
+        border-radius: var(--r);
+        background: #fff;
+        display: block;
+    }
+
+    /* Char count */
+    .char-count { font-size: 11px; color: var(--muted); margin-top: 6px; text-align: right; }
+
+    @media (max-width: 900px) {
+        .dd-layout { grid-template-columns: 1fr; }
+        .dd-sidebar { order: 2; }
+        .dd-main   { order: 1; }
+    }
+
+    /* Agent compose workspace polish */
+    .dd-back {
+        height: 34px;
+        padding: 0 12px;
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        background: rgba(148,163,184,.06);
+        width: fit-content;
+    }
+    .dd-layout {
+        grid-template-columns: 300px minmax(0, 1fr);
+    }
+    .dd-card {
+        border-radius: 12px;
+        background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.008)), var(--card-bg);
+    }
+    .dd-card:hover { border-color: var(--card-border); }
+    .dd-card-header {
+        background: rgba(148,163,184,.035);
+        padding: 15px 18px;
+    }
+    .dd-card-header i { color: var(--text-2); }
+    .badge { border-radius: 8px; }
+    .badge-draft {
+        background: rgba(245,158,11,.08);
+        color: var(--amber);
+        border-color: rgba(245,158,11,.22);
+    }
+    .badge-sent {
+        background: rgba(34,197,94,.08);
+        color: var(--green);
+        border-color: rgba(34,197,94,.22);
+    }
+    .btn-send {
+        background: rgba(34,197,94,.1);
+        border: 1px solid rgba(34,197,94,.25);
+        color: var(--green);
+        box-shadow: none;
+    }
+    .btn-send:hover {
+        background: rgba(34,197,94,.16);
+        border-color: rgba(34,197,94,.35);
+        box-shadow: none;
+        transform: none;
+        color: var(--green);
+    }
+    .btn-save {
+        background: rgba(33,212,253,.07);
+        border-color: rgba(33,212,253,.22);
+        color: var(--text);
+    }
+    .btn-save:hover {
+        background: rgba(33,212,253,.12);
+        border-color: rgba(33,212,253,.32);
+    }
+    .dd-tabs {
+        background: rgba(148,163,184,.025);
+        padding: 0 10px;
+    }
+    .dd-tab {
+        color: var(--muted);
+        border-bottom-width: 2px;
+    }
+    .dd-tab.active {
+        color: var(--text);
+        border-bottom-color: var(--accent);
+    }
+    .form-input {
+        background: rgba(148,163,184,.04);
+        border-radius: 8px;
+    }
+    .form-input:focus {
+        border-color: rgba(33,212,253,.38);
+        box-shadow: 0 0 0 3px rgba(33,212,253,.08);
+        background: rgba(33,212,253,.035);
+    }
+    textarea.form-input {
+        font-family: var(--font);
+        font-size: 13px;
+        line-height: 1.65;
+        min-height: 460px;
+    }
+    .email-preview-frame {
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        min-height: 560px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<a class="dd-back" href="{{ url_for('email_agent.drafts') }}">
+    <i class="fas fa-arrow-left"></i> Back to Drafts
+</a>
+
+<div class="dd-layout">
+
+    <!-- Sidebar -->
+    <div class="dd-sidebar">
+
+        <!-- Meta Info -->
+        <div class="dd-card">
+            <div class="dd-card-header">
+                <i class="fas fa-info-circle"></i>
+                <span>Draft Info</span>
+            </div>
+            <div class="dd-card-body">
+                <div class="meta-list">
+                    <div class="meta-item">
+                        <span class="meta-key">Status</span>
+                        <span class="meta-val">
+                            {% if draft.status == 'Sent' %}
+                                <span class="badge badge-sent"><i class="fas fa-check-circle"></i> Sent</span>
+                            {% else %}
+                                <span class="badge badge-draft"><i class="fas fa-circle badge-dot"></i> Draft</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-key">Draft ID</span>
+                        <span class="meta-val meta-mono">#{{ draft.id }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-key">Organization</span>
+                        <span class="meta-val">{{ draft.organization_name or '-' }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-key">Recipient</span>
+                        <span class="meta-val">{{ draft.recipient_email }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-key">Created</span>
+                        <span class="meta-val">{{ draft.created_at }}</span>
+                    </div>
+                    {% if draft.sent_at %}
+                    <div class="meta-item">
+                        <span class="meta-key">Sent At</span>
+                        <span class="meta-val">{{ draft.sent_at }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="dd-card">
+            <div class="dd-card-header">
+                <i class="fas fa-bolt"></i>
+                <span>Actions</span>
+            </div>
+            <div class="dd-card-body">
+                <div class="btn-actions">
+                    {% if draft.status != 'Sent' %}
+                    <form method="post" action="{{ url_for('email_agent.send_draft', draft_id=draft.id) }}"
+                          onsubmit="return confirm('Send this draft to {{ draft.recipient_email }} now?');">
+                        <button class="action-btn btn-send" type="submit">
+                            <i class="fas fa-paper-plane"></i> Send Now
+                        </button>
+                    </form>
+                    <button class="action-btn btn-save" type="submit" form="editForm">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                    {% else %}
+                    <div class="action-btn btn-disabled">
+                        <i class="fas fa-check-circle"></i> Already Sent
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /sidebar -->
+
+    <!-- Main -->
+    <div class="dd-main">
+        <div class="dd-card">
+
+            <!-- Tabs -->
+            <div class="dd-tabs">
+                <button type="button" class="dd-tab active" onclick="switchTab(event,'tabEdit')">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button type="button" class="dd-tab" onclick="switchTab(event,'tabPreview')">
+                    <i class="fas fa-eye"></i> Preview
+                </button>
+            </div>
+
+            <!-- Edit Tab -->
+            <div id="tabEdit" class="dd-tab-content active">
+                <form id="editForm" method="post">
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-envelope"></i> Recipient</label>
+                        <input class="form-input" type="email" name="recipient_email"
+                               value="{{ draft.recipient_email }}"
+                               {% if draft.status == 'Sent' %}readonly{% endif %} required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-heading"></i> Subject</label>
+                        <input class="form-input" type="text" name="subject_line"
+                               value="{{ draft.subject_line }}"
+                               {% if draft.status == 'Sent' %}readonly{% endif %} required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-code"></i> Reply Body (HTML)</label>
+                        <textarea id="replyBody" class="form-input" name="reply_body" rows="20"
+                                  {% if draft.status == 'Sent' %}readonly{% endif %} required>{{ draft.reply_body }}</textarea>
+                        <div class="char-count" id="charCount"></div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Preview Tab -->
+            <div id="tabPreview" class="dd-tab-content">
+                <iframe class="email-preview-frame" id="previewPane"></iframe>
+            </div>
+
+        </div>
+    </div><!-- /main -->
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function switchTab(e, id) {
+    document.querySelectorAll('.dd-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.dd-tab-content').forEach(c => c.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    document.getElementById(id).classList.add('active');
+
+    if (id === 'tabPreview') {
+        var frame = document.getElementById('previewPane');
+        frame.srcdoc = document.getElementById('replyBody').value;
+    }
+}
+
+// Load initial preview content into iframe on page load
+(function () {
+    var frame = document.getElementById('previewPane');
+    if (frame) {
+        frame.srcdoc = document.getElementById('replyBody').value;
+    }
+})();
+
+(function () {
+    var ta = document.getElementById('replyBody');
+    var cc = document.getElementById('charCount');
+    if (!ta || !cc) return;
+    function update() { cc.textContent = ta.value.length + ' characters'; }
+    update();
+    ta.addEventListener('input', update);
+})();
+</script>
+{% endblock %}

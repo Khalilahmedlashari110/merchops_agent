@@ -1,0 +1,695 @@
+{% extends "base.html" %}
+
+{% block title %}UPS Billing Reports | MerchOps AI{% endblock %}
+{% block page_title %}UPS Billing Reports{% endblock %}
+{% block page_subtitle %}Month-wise UPS billing summary with expandable invoice detail and year-over-year trend.{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ubr-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--card-border);
+    }
+
+    .ubr-tab {
+        border: 0;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        color: var(--muted);
+        padding: 12px 14px 11px;
+        font: 850 12px var(--font);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ubr-tab:hover,
+    .ubr-tab.active {
+        color: var(--text);
+        border-bottom-color: var(--accent);
+    }
+
+    .ubr-panel { display: none; }
+    .ubr-panel.active { display: block; }
+
+    .ubr-kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .ubr-kpi,
+    .ubr-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+    }
+
+    .ubr-kpi {
+        padding: 14px;
+        min-height: 76px;
+    }
+
+    .ubr-kpi-num {
+        color: var(--accent);
+        font-size: 24px;
+        font-weight: 850;
+        line-height: 1;
+    }
+
+    .ubr-kpi-label {
+        margin-top: 7px;
+        color: var(--muted);
+        font-size: 10.5px;
+        font-weight: 850;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .ubr-card {
+        overflow: hidden;
+    }
+
+    .ubr-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--card-border);
+        background: rgba(99,102,241,.035);
+    }
+
+    .ubr-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 850;
+    }
+
+    .ubr-title i {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--green);
+        background: rgba(52,211,153,.10);
+        border: 1px solid rgba(52,211,153,.22);
+    }
+
+    .ubr-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--card-border);
+        background: rgba(148,163,184,.06);
+        color: var(--text-2);
+        border-radius: 999px;
+        padding: 4px 9px;
+        font-size: 10.5px;
+        font-weight: 750;
+    }
+
+    .ubr-pivot {
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .ubr-month {
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        overflow: hidden;
+        background: rgba(148,163,184,.025);
+    }
+
+    .ubr-month summary {
+        list-style: none;
+        cursor: pointer;
+        display: grid;
+        grid-template-columns: minmax(140px, 1fr) repeat(3, minmax(110px, auto)) 26px;
+        gap: 12px;
+        align-items: center;
+        padding: 13px 14px;
+        color: var(--text);
+        font-weight: 850;
+    }
+
+    .ubr-month summary::-webkit-details-marker { display: none; }
+    .ubr-month[open] summary { background: rgba(99,102,241,.055); }
+    .ubr-month summary i { color: var(--accent); transition: transform .16s; }
+    .ubr-month[open] summary i { transform: rotate(180deg); }
+    .ubr-month.verified summary {
+        grid-template-columns: minmax(135px, 1fr) repeat(5, minmax(105px, auto)) 26px;
+    }
+
+    .ubr-muted {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .ubr-money {
+        color: var(--green);
+        font-weight: 900;
+    }
+
+    .ubr-diff-positive { color: var(--danger); font-weight: 900; }
+    .ubr-diff-negative { color: var(--green); font-weight: 900; }
+    .ubr-diff-neutral { color: var(--muted); font-weight: 850; }
+
+    .ubr-verified-kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .ubr-smart-list {
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        background: rgba(148,163,184,.035);
+    }
+
+    .ubr-smart-row {
+        display: grid;
+        grid-template-columns: minmax(140px, 1fr) minmax(95px, auto) minmax(95px, auto) minmax(95px, auto);
+        gap: 10px;
+        align-items: center;
+        padding: 10px 12px;
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        background: var(--card-bg);
+        box-shadow: 0 1px 0 rgba(15,23,42,.03);
+    }
+
+    .ubr-smart-key {
+        color: var(--accent);
+        font-weight: 900;
+        overflow-wrap: anywhere;
+    }
+
+    .ubr-smart-meta {
+        color: var(--text-2);
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .ubr-smart-sub {
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+    }
+
+    .ubr-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+    }
+
+    .ubr-table th {
+        padding: 9px 12px;
+        text-align: left;
+        color: var(--muted);
+        background: rgba(99,102,241,.035);
+        border-top: 1px solid var(--card-border);
+        border-bottom: 1px solid var(--card-border);
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .ubr-table td {
+        padding: 10px 12px;
+        color: var(--text-2);
+        border-bottom: 1px solid rgba(148,163,184,.10);
+    }
+
+    .ubr-table tbody tr:hover td { background: rgba(99,102,241,.035); }
+
+    .ubr-trend-grid {
+        display: grid;
+        grid-template-columns: minmax(320px, .8fr) minmax(0, 1.2fr);
+        gap: 16px;
+    }
+
+    .ubr-bar-cell {
+        min-width: 220px;
+    }
+
+    .ubr-bar {
+        height: 9px;
+        border-radius: 999px;
+        background: rgba(148,163,184,.12);
+        overflow: hidden;
+        border: 1px solid rgba(148,163,184,.10);
+    }
+
+    .ubr-bar span {
+        display: block;
+        height: 100%;
+        width: var(--w);
+        background: linear-gradient(90deg, #2563eb, #06b6d4, #22c55e);
+    }
+
+    .ubr-empty,
+    .ubr-alert {
+        padding: 36px 18px;
+        text-align: center;
+        color: var(--muted);
+    }
+
+    .ubr-alert {
+        color: var(--danger);
+        background: rgba(248,113,113,.08);
+        border: 1px solid rgba(248,113,113,.20);
+        border-radius: 8px;
+        margin: 16px;
+    }
+
+    .ubr-alert-detail {
+        margin-top: 14px;
+        display: grid;
+        gap: 8px;
+        text-align: left;
+    }
+
+    .ubr-alert-source {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 9px 11px;
+        border: 1px solid rgba(248,113,113,.16);
+        border-radius: 8px;
+        background: rgba(248,113,113,.06);
+        color: var(--text);
+    }
+
+    .ubr-alert-source span:first-child {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font-weight: 800;
+    }
+
+    .ubr-alert-source span:last-child {
+        flex: 0 0 auto;
+        color: var(--danger);
+        font-weight: 850;
+        font-variant-numeric: tabular-nums;
+    }
+
+    @media (max-width: 980px) {
+        .ubr-kpis,
+        .ubr-verified-kpis,
+        .ubr-trend-grid { grid-template-columns: 1fr; }
+        .ubr-month summary,
+        .ubr-month.verified summary,
+        .ubr-smart-row { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ubr-kpis">
+    <div class="ubr-kpi">
+        <div class="ubr-kpi-num">${{ report.total_billed|whole_number }}</div>
+        <div class="ubr-kpi-label">Total Billed</div>
+    </div>
+    <div class="ubr-kpi">
+        <div class="ubr-kpi-num">{{ report.total_packages|whole_number }}</div>
+        <div class="ubr-kpi-label">Packages</div>
+    </div>
+    <div class="ubr-kpi">
+        <div class="ubr-kpi-num">{{ report.total_invoices|whole_number }}</div>
+        <div class="ubr-kpi-label">Invoices</div>
+    </div>
+    <div class="ubr-kpi">
+        <div class="ubr-kpi-num">{{ report.total_months|whole_number }}</div>
+        <div class="ubr-kpi-label">Months</div>
+    </div>
+</div>
+
+<div class="ubr-tabs" role="tablist" aria-label="UPS billing report tabs">
+    <button class="ubr-tab active" type="button" data-report-tab="pivot" role="tab" aria-selected="true">
+        <i class="fas fa-table-cells"></i>
+        Monthly Pivot
+    </button>
+    <button class="ubr-tab" type="button" data-report-tab="trend" role="tab" aria-selected="false">
+        <i class="fas fa-chart-line"></i>
+        Trend by Month & Year
+    </button>
+    <button class="ubr-tab" type="button" data-report-tab="verified" role="tab" aria-selected="false">
+        <i class="fas fa-shield-check"></i>
+        Verified
+    </button>
+    <form method="post" action="{{ url_for('carrier.refresh_ups_report') }}" style="margin-left:auto;">
+        <input type="hidden" name="next" value="{{ url_for('carrier.ups_billing_report') }}">
+        <button class="ubr-tab" type="submit">
+            <i class="fas fa-rotate"></i>
+            Refresh Report
+        </button>
+    </form>
+</div>
+
+{% if report.error %}
+<div class="ubr-alert">
+    <i class="fas fa-triangle-exclamation"></i>
+    {{ report.error }}
+</div>
+{% endif %}
+
+{% if report.missing_date_rows %}
+<div class="ubr-alert">
+    <i class="fas fa-calendar-xmark"></i>
+    {{ report.missing_date_rows|whole_number }} billing rows still have no readable invoice date in either invoice_date or the raw uploaded payload.
+    {% if report.missing_date_sources %}
+    <div class="ubr-alert-detail">
+        {% for source in report.missing_date_sources %}
+        <div class="ubr-alert-source">
+            <span><i class="fas fa-file-lines"></i> {{ source.source_file }}</span>
+            <span>{{ source.row_count|whole_number }} rows</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="ubr-panel active" id="ubr-tab-pivot" role="tabpanel">
+    <section class="ubr-card">
+        <div class="ubr-card-header">
+            <div class="ubr-title">
+                <i class="fas fa-table-cells"></i>
+                <span>Billing by Month</span>
+            </div>
+            <span class="ubr-pill"><i class="fas fa-layer-group"></i> Expand month to view invoices</span>
+        </div>
+
+        {% if report.months %}
+        <div class="ubr-pivot">
+            {% for month in report.months %}
+            <details class="ubr-month" {% if loop.first %}open{% endif %}>
+                <summary>
+                    <span>
+                        {{ month.invoice_month }}
+                        <div class="ubr-muted">Invoice Month</div>
+                    </span>
+                    <span>
+                        {{ month.invoice_count|whole_number }}
+                        <div class="ubr-muted">Invoices</div>
+                    </span>
+                    <span>
+                        {{ month.package_count|whole_number }}
+                        <div class="ubr-muted">Packages</div>
+                    </span>
+                    <span class="ubr-money">
+                        ${{ month.total_billed|whole_number }}
+                        <div class="ubr-muted">Total Billed</div>
+                    </span>
+                    <i class="fas fa-chevron-down"></i>
+                </summary>
+                <table class="ubr-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice Number</th>
+                            <th>Packages</th>
+                            <th>Total Billed</th>
+                            <th>First Invoice Date</th>
+                            <th>Last Invoice Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for invoice in month.invoices %}
+                        <tr>
+                            <td>{{ invoice.invoice_number }}</td>
+                            <td>{{ invoice.package_count|whole_number }}</td>
+                            <td class="ubr-money">${{ invoice.total_billed|whole_number }}</td>
+                            <td>{{ invoice.first_invoice_date }}</td>
+                            <td>{{ invoice.last_invoice_date }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5">No invoice detail found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </details>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="ubr-empty">No monthly billing data found.</div>
+        {% endif %}
+    </section>
+</div>
+
+<div class="ubr-panel" id="ubr-tab-verified" role="tabpanel">
+    <div class="ubr-verified-kpis">
+        <div class="ubr-kpi">
+            <div class="ubr-kpi-num">${{ report.verified.total_verified|whole_number }}</div>
+            <div class="ubr-kpi-label">Verified Expected</div>
+        </div>
+        <div class="ubr-kpi">
+            <div class="ubr-kpi-num {% if report.verified.total_difference > 0 %}ubr-diff-positive{% elif report.verified.total_difference < 0 %}ubr-diff-negative{% endif %}">
+                ${{ report.verified.total_difference|whole_number }}
+            </div>
+            <div class="ubr-kpi-label">Billed Difference</div>
+        </div>
+        <div class="ubr-kpi">
+            <div class="ubr-kpi-num">{{ report.verified.verified_packages|whole_number }}</div>
+            <div class="ubr-kpi-label">Verified Packages</div>
+        </div>
+        <div class="ubr-kpi">
+            <div class="ubr-kpi-num">{{ report.verified.review_packages|whole_number }}</div>
+            <div class="ubr-kpi-label">Need Review</div>
+        </div>
+    </div>
+
+    <section class="ubr-card">
+        <div class="ubr-card-header">
+            <div class="ubr-title">
+                <i class="fas fa-shield-check"></i>
+                <span>Verified Billing by Month</span>
+            </div>
+            <span class="ubr-pill">
+                <i class="fas fa-file-contract"></i>
+                {{ report.verified.contract_agreement_no or "Contract" }} | {{ report.verified.contract_rule_count|whole_number }} rules
+            </span>
+        </div>
+        {% if report.verified.contract_error %}
+        <div class="ubr-alert">{{ report.verified.contract_error }}</div>
+        {% endif %}
+
+        {% if report.verified.months %}
+        <div class="ubr-pivot">
+            {% for month in report.verified.months %}
+            <details class="ubr-month verified" {% if loop.first %}open{% endif %}>
+                <summary>
+                    <span>
+                        {{ month.invoice_month }}
+                        <div class="ubr-muted">Invoice Month</div>
+                    </span>
+                    <span>
+                        {{ month.invoice_count|whole_number }}
+                        <div class="ubr-muted">Invoices</div>
+                    </span>
+                    <span>
+                        {{ month.package_count|whole_number }}
+                        <div class="ubr-muted">Packages</div>
+                    </span>
+                    <span class="ubr-money">
+                        ${{ month.total_billed|whole_number }}
+                        <div class="ubr-muted">Billed</div>
+                    </span>
+                    <span class="ubr-money">
+                        ${{ month.total_verified|whole_number }}
+                        <div class="ubr-muted">Verified</div>
+                    </span>
+                    <span class="{% if month.total_difference > 0 %}ubr-diff-positive{% elif month.total_difference < 0 %}ubr-diff-negative{% else %}ubr-diff-neutral{% endif %}">
+                        ${{ month.total_difference|whole_number }}
+                        <div class="ubr-muted">Difference</div>
+                    </span>
+                    <i class="fas fa-chevron-down"></i>
+                </summary>
+
+                <div class="ubr-smart-list">
+                    {% for invoice in month.invoices %}
+                    <details class="ubr-month">
+                        <summary>
+                            <span>
+                                {{ invoice.invoice_number }}
+                                <div class="ubr-muted">Invoice</div>
+                            </span>
+                            <span>
+                                {{ invoice.package_count|whole_number }}
+                                <div class="ubr-muted">Packages</div>
+                            </span>
+                            <span class="ubr-money">
+                                ${{ invoice.total_billed|whole_number }}
+                                <div class="ubr-muted">Billed</div>
+                            </span>
+                            <span class="ubr-money">
+                                ${{ invoice.total_verified|whole_number }}
+                                <div class="ubr-muted">Verified</div>
+                            </span>
+                            <span class="{% if invoice.total_difference > 0 %}ubr-diff-positive{% elif invoice.total_difference < 0 %}ubr-diff-negative{% else %}ubr-diff-neutral{% endif %}">
+                                ${{ invoice.total_difference|whole_number }}
+                                <div class="ubr-muted">Diff</div>
+                            </span>
+                            <i class="fas fa-chevron-down"></i>
+                        </summary>
+                        <div class="ubr-smart-list">
+                            {% for row in invoice.top_rows %}
+                            <div class="ubr-smart-row">
+                                <div>
+                                    <div class="ubr-smart-key">{{ row.tracking_number or "Missing Tracking" }}</div>
+                                    <div class="ubr-smart-sub">Zone {{ row.zone or "-" }} | {{ (row.weight or 0)|whole_number }} lb</div>
+                                </div>
+                                <div class="ubr-smart-meta">
+                                    ${{ (row.billed or 0)|whole_number }}
+                                    <div class="ubr-smart-sub">Billed</div>
+                                </div>
+                                <div class="ubr-smart-meta">
+                                    {% if row.expected is not none %}${{ row.expected|whole_number }}{% else %}Review{% endif %}
+                                    <div class="ubr-smart-sub">Verified</div>
+                                </div>
+                                <div class="{% if row.difference and row.difference > 0 %}ubr-diff-positive{% elif row.difference and row.difference < 0 %}ubr-diff-negative{% else %}ubr-diff-neutral{% endif %}">
+                                    {% if row.difference is not none %}${{ row.difference|whole_number }}{% else %}--{% endif %}
+                                    <div class="ubr-smart-sub">{{ row.reason }}</div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="ubr-empty">No package sample found.</div>
+                            {% endfor %}
+                        </div>
+                    </details>
+                    {% else %}
+                    <div class="ubr-empty">No invoice verification found for this month.</div>
+                    {% endfor %}
+                </div>
+            </details>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="ubr-empty">No verified billing data found.</div>
+        {% endif %}
+    </section>
+</div>
+
+<div class="ubr-panel" id="ubr-tab-trend" role="tabpanel">
+    <div class="ubr-trend-grid">
+        <section class="ubr-card">
+            <div class="ubr-card-header">
+                <div class="ubr-title">
+                    <i class="fas fa-calendar"></i>
+                    <span>Year Trend</span>
+                </div>
+            </div>
+            <table class="ubr-table">
+                <thead>
+                    <tr>
+                        <th>Year</th>
+                        <th>Invoices</th>
+                        <th>Packages</th>
+                        <th>Total Billed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in report.year_trends %}
+                    <tr>
+                        <td>{{ row.invoice_year }}</td>
+                        <td>{{ row.invoice_count|whole_number }}</td>
+                        <td>{{ row.package_count|whole_number }}</td>
+                        <td class="ubr-money">${{ row.total_billed|whole_number }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4">No yearly trend data found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <section class="ubr-card">
+            <div class="ubr-card-header">
+                <div class="ubr-title">
+                    <i class="fas fa-chart-simple"></i>
+                    <span>Month Trend</span>
+                </div>
+            </div>
+            <table class="ubr-table">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Packages</th>
+                        <th>Total Billed</th>
+                        <th>Trend</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in report.month_trends %}
+                    <tr>
+                        <td>{{ row.invoice_month }}</td>
+                        <td>{{ row.package_count|whole_number }}</td>
+                        <td class="ubr-money">${{ row.total_billed|whole_number }}</td>
+                        <td class="ubr-bar-cell">
+                            <div class="ubr-bar"><span style="--w: {{ row.bar_width }}%;"></span></div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4">No monthly trend data found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const tabs = Array.from(document.querySelectorAll('[data-report-tab]'));
+    const panels = {
+        pivot: document.getElementById('ubr-tab-pivot'),
+        trend: document.getElementById('ubr-tab-trend'),
+        verified: document.getElementById('ubr-tab-verified')
+    };
+
+    function activate(tabName) {
+        const next = panels[tabName] ? tabName : 'pivot';
+        tabs.forEach(function (tab) {
+            const active = tab.dataset.reportTab === next;
+            tab.classList.toggle('active', active);
+            tab.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        Object.entries(panels).forEach(function ([name, panel]) {
+            panel.classList.toggle('active', name === next);
+        });
+        localStorage.setItem('upsBillingReportTab', next);
+    }
+
+    tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            activate(tab.dataset.reportTab);
+        });
+    });
+
+    activate(localStorage.getItem('upsBillingReportTab') || 'pivot');
+}());
+</script>
+{% endblock %}

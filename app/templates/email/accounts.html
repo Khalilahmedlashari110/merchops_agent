@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Email Accounts{% endblock %}
+{% block page_title %}Email Accounts{% endblock %}
+{% block page_subtitle %}Register response mailboxes for organizations and users. Only active registered accounts are read by the agent.{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2>Registered Email Accounts</h2>
+        <p>Only these active accounts will be used by the email agent for reading, drafting, and sending.</p>
+    </div>
+    <div>
+        <a class="btn" href="{{ url_for('email_agent.account_new') }}">Add Email Account</a>
+    </div>
+</div>
+
+{% if accounts %}
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Account Name</th>
+                <th>Email</th>
+                <th>Organization</th>
+                <th>User</th>
+                <th>Provider</th>
+                <th>SMTP</th>
+                <th>IMAP</th>
+                <th>Draft/Read Enabled</th>
+                <th>Active</th>
+                <th>Interval</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in accounts %}
+            <tr>
+                <td><strong>{{ a.account_name }}</strong></td>
+                <td>{{ a.email_address }}</td>
+                <td>{{ a.organization_name }}</td>
+                <td>{{ a.user_name or '' }}</td>
+                <td>{{ a.provider }}</td>
+                <td>{{ a.smtp_server }}:{{ a.smtp_port }}</td>
+                <td>{{ a.imap_server }}:{{ a.imap_port }}</td>
+                <td>
+                    {% if a.auto_reply_enabled %}
+                        <span class="pill pill-blue">Enabled</span>
+                    {% else %}
+                        <span class="pill pill-amber">Disabled</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if a.is_active %}
+                        <span class="pill pill-green">Active</span>
+                    {% else %}
+                        <span class="pill pill-red">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>{{ a.check_interval_minutes }} min</td>
+                <td>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <a class="btn btn-light" href="{{ url_for('email_agent.account_edit', account_id=a.id) }}">Edit</a>
+                        <form method="post" action="{{ url_for('email_agent.account_delete', account_id=a.id) }}" onsubmit="return confirm('Delete this email account?');">
+                            <button class="btn btn-outline" type="submit">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>No email accounts registered</h3>
+    <p>Add an email account first so the agent can read and prepare responses.</p>
+</div>
+{% endif %}
+{% endblock %}

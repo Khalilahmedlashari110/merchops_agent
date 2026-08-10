@@ -1,0 +1,810 @@
+{% extends "base.html" %}
+
+{% block title %}Data Chatbot | MerchOps AI{% endblock %}
+{% block page_title %}Data Chatbot{% endblock %}
+{% block page_subtitle %}Ask natural questions from the SQL Server tables assigned to you.{% endblock %}
+
+{% block extra_css %}
+<style>
+.dc-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: calc(100vh - 190px);
+    width: 100%;
+}
+.dc-shell.is-fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    min-height: auto;
+    width: 100vw;
+    height: 100vh;
+    background: var(--card-bg);
+    box-shadow: none;
+    border-radius: 0;
+}
+body.dc-fullscreen-active {
+    overflow: hidden;
+}
+body.dc-fullscreen-active .page-loading-overlay {
+    display: none;
+}
+.dc-shell.is-fullscreen .dc-panel {
+    border-radius: 0;
+    border: 0;
+    box-shadow: none;
+}
+.dc-shell.is-fullscreen .dc-chat {
+    height: 100vh;
+    min-height: 0;
+}
+.dc-shell.is-fullscreen .dc-panel-head {
+    min-height: 68px;
+}
+.dc-shell.is-fullscreen .dc-messages {
+    padding: 28px clamp(18px, 3vw, 44px);
+}
+.dc-shell.is-fullscreen .dc-msg.bot {
+    max-width: min(1280px, 96%);
+}
+.dc-shell.is-fullscreen .dc-answer {
+    max-width: 1120px;
+}
+.dc-shell.is-fullscreen .dc-msg.user {
+    max-width: min(860px, 82%);
+}
+.dc-shell.is-fullscreen .dc-result {
+    max-height: min(520px, 48vh);
+}
+.dc-shell.is-fullscreen .dc-chart canvas {
+    height: 360px;
+}
+.dc-panel {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+.dc-panel-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: linear-gradient(180deg, rgba(148,163,184,.08), rgba(148,163,184,.025));
+}
+.dc-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--text);
+    font-weight: 850;
+    font-size: 15px;
+}
+.dc-body { padding: 16px 18px; }
+.dc-form-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.dc-input,
+.dc-select {
+    width: 100%;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--input-bg, rgba(15,23,42,.44));
+    color: var(--text);
+    padding: 12px 13px;
+    font-size: 14px;
+    line-height: 1.35;
+    outline: none;
+    transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+.dc-input:focus,
+.dc-select:focus {
+    border-color: rgba(56,189,248,.58);
+    box-shadow: 0 0 0 3px rgba(56,189,248,.12);
+}
+.dc-select option {
+    background: #ffffff;
+    color: #111827;
+}
+html[data-theme="dark"] .dc-select option {
+    background: #111827;
+    color: #f8fafc;
+}
+.dc-btn {
+    border: 1px solid rgba(56,189,248,.32);
+    background: rgba(56,189,248,.12);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 13px;
+    font-weight: 800;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    min-height: 42px;
+    transition: transform .14s ease, background .16s ease, border-color .16s ease;
+}
+.dc-btn:hover {
+    background: rgba(56,189,248,.2);
+    transform: translateY(-1px);
+}
+.dc-btn:disabled {
+    opacity: .62;
+    cursor: not-allowed;
+}
+.dc-btn.danger {
+    border-color: rgba(248,113,113,.28);
+    background: rgba(248,113,113,.1);
+}
+.dc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 320px;
+    overflow: auto;
+}
+.dc-table-pill {
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 10px;
+    background: rgba(148,163,184,.07);
+}
+.dc-table-name {
+    color: var(--text);
+    font-weight: 800;
+    font-size: 13px;
+    word-break: break-word;
+}
+.dc-table-meta {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 3px;
+}
+.dc-chat {
+    height: calc(100vh - 190px);
+    min-height: 680px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+.dc-messages {
+    flex: 1;
+    padding: 22px 20px 24px;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    scroll-behavior: smooth;
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.02), rgba(148,163,184,.035)),
+        rgba(148,163,184,.025);
+}
+.dc-msg {
+    max-width: min(1180px, 96%);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    line-height: 1.66;
+    font-size: 14.5px;
+    color: var(--text);
+    box-shadow: 0 10px 24px rgba(15,23,42,.08);
+}
+.dc-msg.user {
+    margin-left: auto;
+    max-width: min(760px, 84%);
+    background: linear-gradient(135deg, rgba(56,189,248,.20), rgba(34,197,94,.10));
+    border-color: rgba(56,189,248,.34);
+    font-weight: 650;
+}
+.dc-msg.bot {
+    background: rgba(255,255,255,.04);
+    align-self: flex-start;
+}
+html[data-theme="light"] .dc-msg.bot {
+    background: #ffffff;
+}
+.dc-answer {
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+    max-width: 1040px;
+}
+.dc-answer p {
+    margin: 0;
+    max-width: 92ch;
+}
+.dc-answer ul {
+    margin: 0;
+    padding-left: 20px;
+}
+.dc-answer li {
+    margin: 5px 0;
+}
+.dc-answer strong {
+    color: var(--text);
+    font-weight: 850;
+}
+.dc-msg.thinking {
+    min-width: min(360px, 100%);
+    border-color: rgba(56,189,248,.22);
+    background:
+        linear-gradient(135deg, rgba(56,189,248,.10), rgba(34,197,94,.06)),
+        rgba(148,163,184,.07);
+}
+.dc-thinking-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text);
+    font-weight: 800;
+}
+.dc-thinking-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.dc-thinking-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: dc-dot 1.05s ease-in-out infinite;
+}
+.dc-thinking-dots span:nth-child(2) { animation-delay: .14s; }
+.dc-thinking-dots span:nth-child(3) { animation-delay: .28s; }
+.dc-thinking-sub {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 12px;
+}
+@keyframes dc-dot {
+    0%, 80%, 100% { transform: translateY(0); opacity: .42; }
+    40% { transform: translateY(-4px); opacity: 1; }
+}
+.dc-result {
+    margin-top: 12px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    overflow: auto;
+    max-height: 440px;
+    width: 100%;
+}
+.dc-chart {
+    margin-top: 12px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 14px;
+    background: rgba(148,163,184,.055);
+}
+.dc-chart-title {
+    color: var(--text);
+    font-weight: 850;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+.dc-chart canvas {
+    width: 100%;
+    height: 320px;
+    display: block;
+}
+.dc-result table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 960px;
+}
+.dc-result th,
+.dc-result td {
+    border-bottom: 1px solid var(--card-border);
+    padding: 10px 12px;
+    text-align: left;
+    color: var(--text);
+    font-size: 13px;
+    white-space: nowrap;
+}
+.dc-result th {
+    position: sticky;
+    top: 0;
+    background: var(--card-bg);
+    font-weight: 850;
+}
+.dc-sql {
+    margin-top: 10px;
+    color: var(--muted);
+    font: 11px var(--font-mono);
+    word-break: break-word;
+}
+.dc-answer-actions {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+.dc-result-note {
+    color: var(--muted);
+    font-size: 12px;
+}
+.dc-download-link {
+    border: 1px solid rgba(34,197,94,.32);
+    background: rgba(34,197,94,.12);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 850;
+    text-decoration: none;
+}
+.dc-download-link:hover {
+    background: rgba(34,197,94,.2);
+}
+.dc-chatbar {
+    padding: 14px 16px;
+    border-top: 1px solid var(--card-border);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    background:
+        linear-gradient(180deg, rgba(148,163,184,.035), rgba(148,163,184,.08)),
+        var(--card-bg);
+}
+.dc-chatbar .dc-input {
+    min-height: 48px;
+    border-radius: 8px;
+}
+.dc-chatbar .dc-btn {
+    min-width: 92px;
+    min-height: 48px;
+    justify-content: center;
+}
+.dc-chatbar.is-busy .dc-input {
+    opacity: .75;
+}
+.dc-empty {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 12px;
+    border: 1px dashed var(--card-border);
+    border-radius: 8px;
+}
+@media (max-width: 980px) {
+    .dc-shell { min-height: calc(100vh - 150px); }
+    .dc-chat {
+        height: calc(100vh - 150px);
+        min-height: 560px;
+    }
+    .dc-panel-head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    .dc-msg,
+    .dc-msg.user {
+        max-width: 100%;
+    }
+    .dc-result table {
+        min-width: 780px;
+    }
+    .dc-chatbar {
+        grid-template-columns: 1fr;
+    }
+    .dc-shell.is-fullscreen {
+        inset: 0;
+        height: 100vh;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dc-shell">
+    <section class="dc-panel dc-chat">
+        <div class="dc-panel-head">
+            <div>
+                <div class="dc-title"><i class="fas fa-comments"></i> Ask Data Questions</div>
+                <div class="dc-table-meta">
+                    {{ assigned_tables|length }} table(s) available to this chat
+                    {% if current_user.role_name in ["super_admin", "org_admin"] %}
+                    &middot; <a href="{{ url_for('data_chatbot.assignments') }}" style="color:inherit;">Manage assignments</a>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                <button class="dc-btn" id="dcFullscreen" type="button"><i class="fas fa-expand"></i> Full Screen</button>
+                <button class="dc-btn danger" id="dcClearHistory" type="button"><i class="fas fa-rotate-left"></i> Reset</button>
+                <a class="dc-btn" id="dcDownload" href="#" style="display:none;"><i class="fas fa-file-excel"></i> Download</a>
+            </div>
+        </div>
+        <div class="dc-messages" id="dcMessages">
+            <div class="dc-msg bot">
+                <div class="dc-answer">
+                    <p><strong>Database assistant</strong></p>
+                    <p>Ask a question about your assigned database tables, and I'll respond in plain language with the relevant records, charts, or summaries when available.</p>
+                </div>
+            </div>
+        </div>
+        <form class="dc-chatbar" id="dcChatForm" data-no-loader>
+            <input class="dc-input" id="dcQuestion" autocomplete="off" placeholder="Ask from assigned tables..." required>
+            <button class="dc-btn" id="dcAskBtn" type="submit"><i class="fas fa-paper-plane"></i> Ask</button>
+        </form>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var form = document.getElementById('dcChatForm');
+    var input = document.getElementById('dcQuestion');
+    var askBtn = document.getElementById('dcAskBtn');
+    var messages = document.getElementById('dcMessages');
+    var download = document.getElementById('dcDownload');
+    var clearHistory = document.getElementById('dcClearHistory');
+    var fullscreenBtn = document.getElementById('dcFullscreen');
+    var shell = document.querySelector('.dc-shell');
+    var stageTimer = null;
+    var chartCounter = 0;
+    var renderedCharts = {};
+    var isChatFullscreen = false;
+    var savedHistory = {{ chat_history|tojson }};
+
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, function (char) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char];
+        });
+    }
+
+    function renderRichText(text) {
+        var safe = escapeHtml(text || '').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        var blocks = safe.split(/\n{2,}/).filter(Boolean);
+        if (!blocks.length) return '<div class="dc-answer"><p>No answer returned.</p></div>';
+        return '<div class="dc-answer">' + blocks.map(function (block) {
+            var lines = block.split(/\n/).filter(Boolean);
+            var allBullets = lines.length && lines.every(function (line) { return /^\s*[-*]\s+/.test(line); });
+            if (allBullets) {
+                return '<ul>' + lines.map(function (line) {
+                    return '<li>' + line.replace(/^\s*[-*]\s+/, '') + '</li>';
+                }).join('') + '</ul>';
+            }
+            return '<p>' + lines.join('<br>') + '</p>';
+        }).join('') + '</div>';
+    }
+
+    function addMessage(role, html) {
+        var item = document.createElement('div');
+        item.className = 'dc-msg ' + role;
+        item.innerHTML = html;
+        messages.appendChild(item);
+        scrollChatToBottom(false);
+        return item;
+    }
+
+    function scrollChatToBottom(smooth) {
+        if (!messages) return;
+        window.requestAnimationFrame(function () {
+            messages.scrollTo({
+                top: messages.scrollHeight,
+                behavior: smooth ? 'smooth' : 'auto'
+            });
+            if (form && !isChatFullscreen) {
+                form.scrollIntoView({block: 'end', behavior: smooth ? 'smooth' : 'auto'});
+            }
+        });
+    }
+
+    function renderTable(columns, rows) {
+        if (!rows || !rows.length) return '';
+        return '<div class="dc-result"><table><thead><tr>'
+            + columns.map(function (col) { return '<th>' + escapeHtml(col) + '</th>'; }).join('')
+            + '</tr></thead><tbody>'
+            + rows.map(function (row) {
+                return '<tr>' + columns.map(function (col) {
+                    return '<td>' + escapeHtml(row[col]) + '</td>';
+                }).join('') + '</tr>';
+            }).join('')
+            + '</tbody></table></div>';
+    }
+
+    function renderChart(chart) {
+        if (!chart || !chart.labels || !chart.labels.length || !chart.datasets || !chart.datasets.length) return '';
+        chartCounter += 1;
+        var id = 'dcChart' + chartCounter;
+        renderedCharts[id] = chart;
+        return '<div class="dc-chart">'
+            + '<div class="dc-chart-title">' + escapeHtml(chart.title || 'Chart') + '</div>'
+            + '<canvas id="' + id + '"></canvas>'
+            + '</div>';
+    }
+
+    function drawChart(canvasId, chart) {
+        var canvas = document.getElementById(canvasId);
+        if (!canvas || !chart) return;
+        var ctx = canvas.getContext('2d');
+        var rect = canvas.getBoundingClientRect();
+        var dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.max(320, Math.floor(rect.width * dpr));
+        canvas.height = Math.floor(Math.max(260, rect.height || 320) * dpr);
+        ctx.scale(dpr, dpr);
+
+        var width = canvas.width / dpr;
+        var height = canvas.height / dpr;
+        var pad = {left: 54, right: 18, top: 18, bottom: 48};
+        var plotW = width - pad.left - pad.right;
+        var plotH = height - pad.top - pad.bottom;
+        var colors = ['#38bdf8', '#22c55e', '#f59e0b'];
+        var labels = chart.labels || [];
+        var datasets = chart.datasets || [];
+        var allValues = [];
+        datasets.forEach(function (ds) {
+            (ds.values || []).forEach(function (value) { allValues.push(Number(value) || 0); });
+        });
+        var max = Math.max.apply(null, allValues.concat([1]));
+        var min = Math.min.apply(null, allValues.concat([0]));
+        if (min > 0) min = 0;
+        var range = max - min || 1;
+
+        function xAt(index) {
+            if (labels.length <= 1) return pad.left + plotW / 2;
+            return pad.left + (plotW * index / (labels.length - 1));
+        }
+        function yAt(value) {
+            return pad.top + plotH - ((Number(value) || 0) - min) / range * plotH;
+        }
+
+        ctx.clearRect(0, 0, width, height);
+        ctx.font = '11px Inter, Arial, sans-serif';
+        ctx.strokeStyle = 'rgba(148,163,184,.28)';
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--muted') || '#94a3b8';
+        ctx.lineWidth = 1;
+        for (var i = 0; i <= 4; i += 1) {
+            var y = pad.top + plotH * i / 4;
+            var value = max - range * i / 4;
+            ctx.beginPath();
+            ctx.moveTo(pad.left, y);
+            ctx.lineTo(width - pad.right, y);
+            ctx.stroke();
+            ctx.fillText(value.toLocaleString(undefined, {maximumFractionDigits: 0}), 6, y + 4);
+        }
+
+        var labelStep = Math.max(1, Math.ceil(labels.length / 8));
+        labels.forEach(function (label, index) {
+            if (index % labelStep !== 0 && index !== labels.length - 1) return;
+            var x = xAt(index);
+            ctx.save();
+            ctx.translate(x, height - 18);
+            ctx.rotate(-Math.PI / 7);
+            ctx.textAlign = 'right';
+            ctx.fillText(String(label).slice(0, 18), 0, 0);
+            ctx.restore();
+        });
+
+        datasets.forEach(function (ds, dsIndex) {
+            var values = ds.values || [];
+            var color = colors[dsIndex % colors.length];
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2;
+            if (chart.type === 'bar') {
+                var groupW = plotW / Math.max(labels.length, 1);
+                var barW = Math.max(6, Math.min(28, groupW / (datasets.length + 1)));
+                values.forEach(function (value, index) {
+                    var x = pad.left + groupW * index + groupW / 2 - (datasets.length * barW / 2) + dsIndex * barW;
+                    var y = yAt(value);
+                    ctx.fillRect(x, y, barW - 2, pad.top + plotH - y);
+                });
+            } else {
+                ctx.beginPath();
+                values.forEach(function (value, index) {
+                    var x = xAt(index);
+                    var y = yAt(value);
+                    if (index === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+                values.forEach(function (value, index) {
+                    ctx.beginPath();
+                    ctx.arc(xAt(index), yAt(value), 3, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+        });
+
+        var legendX = pad.left;
+        datasets.forEach(function (ds, index) {
+            ctx.fillStyle = colors[index % colors.length];
+            ctx.fillRect(legendX, 6, 9, 9);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text') || '#e5e7eb';
+            ctx.fillText(ds.label || ('Series ' + (index + 1)), legendX + 14, 14);
+            legendX += Math.min(180, 18 + String(ds.label || '').length * 7);
+        });
+    }
+
+    function renderActions(data) {
+        var html = '';
+        var rowCount = Number(data.row_count || 0);
+        var shownCount = Number(data.shown_count || (data.rows || []).length || 0);
+        if (rowCount || shownCount) {
+            html += '<span class="dc-result-note">Showing ' + shownCount.toLocaleString()
+                + ' of ' + rowCount.toLocaleString() + ' row(s)</span>';
+        }
+        if (data.export_id) {
+            var href = '/data-chatbot/download/' + encodeURIComponent(data.export_id);
+            html += '<a class="dc-download-link" href="' + href + '">'
+                + '<i class="fas fa-file-excel"></i> Download Excel</a>';
+        }
+        return html ? '<div class="dc-answer-actions">' + html + '</div>' : '';
+    }
+
+    function renderResponseHtml(data) {
+        return renderRichText(data.answer || '')
+            + renderChart(data.chart)
+            + renderTable(data.columns || [], data.rows || [])
+            + renderActions(data)
+            + (data.sql ? '<div class="dc-sql">SQL: ' + escapeHtml(data.sql) + '</div>' : '');
+    }
+
+    function drawLatestChart(data) {
+        if (data && data.chart) {
+            drawChart('dcChart' + chartCounter, data.chart);
+            scrollChatToBottom(true);
+        }
+    }
+
+    function historyResponse(item) {
+        if (item.response) return item.response;
+        return {answer: item.content || ''};
+    }
+
+    function redrawCharts() {
+        Object.keys(renderedCharts).forEach(function (id) {
+            drawChart(id, renderedCharts[id]);
+        });
+    }
+
+    function setFullscreen(isFullscreen) {
+        if (!shell || !fullscreenBtn) return;
+        isChatFullscreen = Boolean(isFullscreen);
+        shell.classList.toggle('is-fullscreen', isFullscreen);
+        document.body.classList.toggle('dc-fullscreen-active', isFullscreen);
+        fullscreenBtn.innerHTML = isFullscreen
+            ? '<i class="fas fa-compress"></i> Exit Full Screen'
+            : '<i class="fas fa-expand"></i> Full Screen';
+        window.setTimeout(function () {
+            redrawCharts();
+            scrollChatToBottom(false);
+        }, 140);
+    }
+
+    function setBusy(isBusy) {
+        form.classList.toggle('is-busy', isBusy);
+        if (input) input.disabled = isBusy;
+        if (askBtn) {
+            askBtn.disabled = isBusy;
+            askBtn.innerHTML = isBusy
+                ? '<i class="fas fa-spinner fa-pulse"></i> Working'
+                : '<i class="fas fa-paper-plane"></i> Ask';
+        }
+    }
+
+    function startThinking(messageNode) {
+        var stages = [
+            'Checking assigned tables',
+            'Planning a safe read-only query',
+            'Reading SQL Server data',
+            'Preparing a clean answer'
+        ];
+        var index = 0;
+        messageNode.classList.add('thinking');
+        messageNode.innerHTML = '<div class="dc-thinking-row">'
+            + '<span>Working on your question</span>'
+            + '<span class="dc-thinking-dots"><span></span><span></span><span></span></span>'
+            + '</div>'
+            + '<div class="dc-thinking-sub" id="dcThinkingStage">' + stages[index] + '</div>';
+        clearInterval(stageTimer);
+        stageTimer = setInterval(function () {
+            index = Math.min(index + 1, stages.length - 1);
+            var stage = document.getElementById('dcThinkingStage');
+            if (stage) stage.textContent = stages[index];
+            if (index >= stages.length - 1) clearInterval(stageTimer);
+        }, 1400);
+    }
+
+    function stopThinking(messageNode) {
+        clearInterval(stageTimer);
+        messageNode.classList.remove('thinking');
+    }
+
+    if (!form) return;
+
+    if (savedHistory && savedHistory.length) {
+        savedHistory.forEach(function (item) {
+            if (item.role === 'user') {
+                addMessage('user', escapeHtml(item.content || ''));
+            } else if (item.role === 'assistant') {
+                var replayData = historyResponse(item);
+                addMessage('bot', renderResponseHtml(replayData));
+                drawLatestChart(replayData);
+            }
+        });
+        scrollChatToBottom(false);
+    }
+
+    if (clearHistory) {
+        clearHistory.addEventListener('click', async function () {
+            try {
+                await fetch('{{ url_for("data_chatbot.clear_history") }}', {method: 'POST'});
+                window.location.reload();
+            } catch (err) {}
+        });
+    }
+
+    if (fullscreenBtn && shell) {
+        fullscreenBtn.addEventListener('click', function () {
+            setFullscreen(!shell.classList.contains('is-fullscreen'));
+        });
+    }
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && shell && shell.classList.contains('is-fullscreen')) {
+            setFullscreen(false);
+        }
+    });
+
+    window.addEventListener('resize', function () {
+        window.clearTimeout(window.__dcResizeTimer);
+        window.__dcResizeTimer = window.setTimeout(redrawCharts, 120);
+    });
+
+    window.addEventListener('beforeunload', function () {
+        document.body.classList.remove('dc-fullscreen-active');
+    });
+
+    form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        var question = input.value.trim();
+        if (!question) return;
+        addMessage('user', escapeHtml(question));
+        input.value = '';
+        setBusy(true);
+        var pending = addMessage('bot', '');
+        startThinking(pending);
+        scrollChatToBottom(true);
+        if (download) download.style.display = 'none';
+        try {
+            var response = await fetch('{{ url_for("data_chatbot.chat") }}', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message: question})
+            });
+            var data = await response.json();
+            if (!data.success) throw new Error(data.message || 'Chatbot request failed.');
+            stopThinking(pending);
+            pending.innerHTML = renderResponseHtml(data);
+            drawLatestChart(data);
+            scrollChatToBottom(true);
+            if (data.export_id && download) {
+                download.href = '/data-chatbot/download/' + encodeURIComponent(data.export_id);
+                download.style.display = 'inline-flex';
+            }
+        } catch (err) {
+            stopThinking(pending);
+            pending.innerHTML = '<div class="flash flash-danger" style="margin:0;">'
+                + '<i class="fas fa-triangle-exclamation"></i> '
+                + escapeHtml(err.message || 'Unable to answer right now.')
+                + '</div>';
+        } finally {
+            setBusy(false);
+            if (input) input.focus();
+        }
+    });
+}());
+</script>
+{% endblock %}

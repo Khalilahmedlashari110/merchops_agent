@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MerchOps Agent{% endblock %}</title>
+<script>
+(function () {
+    const theme = localStorage.getItem("theme") || "light";
+    document.documentElement.setAttribute("data-theme", theme);
+})();
+</script>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Robotics Control Panel Theme -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+<div class="app-shell">
+
+   
+
+    <!-- ═══ MAIN ═══ -->
+    <main class="main">
+
+        <!-- TOP BAR -->
+        <div class="topbar">
+            <div class="topbar-left">
+                <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <h1>{% block page_title %}MerchOps Agent{% endblock %}</h1>
+                    <p>{% block page_subtitle %}AI-powered operations intelligence — Email · Inventory · Sender Network{% endblock %}</p>
+                </div>
+            </div>
+
+            <div class="topbar-right">
+
+                <!-- Live agent status pulse -->
+                <div class="agent-status-pill" title="Email AI agent is active and polling">
+                    <span class="status-pulse-dot"></span>
+                    <span>Agent Online</span>
+                </div>
+
+                <!-- ── Notification bell ─────────────────── -->
+                <div class="notif-wrap">
+                    <button type="button" class="t-icon-btn notif-bell" id="notifBell" title="Email Notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="notif-badge" id="notifBadge">0</span>
+                    </button>
+                    <div class="notif-dropdown" id="notifDropdown">
+                        <div class="nd-header">
+                            <span class="nd-title"><i class="fas fa-envelope"></i> Email Notifications</span>
+                            <button type="button" class="nd-mark-read" id="ndMarkRead">Mark all read</button>
+                        </div>
+                        <div class="nd-list" id="ndList">
+                            <div class="nd-empty">
+                                <i class="fas fa-bell-slash"></i>
+                                <div class="nd-empty-text">No recent emails</div>
+                            </div>
+                        </div>
+                        <div class="nd-footer">
+                            <a href="{{ url_for('email_agent.inbox') }}"><i class="fas fa-inbox"></i> View all in AI Inbox</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="t-icon-btn theme-toggle" id="themeToggle" title="Toggle dark/light mode">
+                    <i class="fas fa-sun icon-sun"></i>
+                    <i class="fas fa-moon icon-moon"></i>
+                </div>
+
+                {% if current_user.is_authenticated %}
+                <div class="user-badge">
+                    <div class="user-avatar">{{ current_user.full_name[:2]|upper }}</div>
+                    {{ current_user.full_name }} ({{ current_user.username }})
+                </div>
+                <a class="btn btn-outline btn-sm" href="{{ url_for('auth.logout') }}">
+                    <i class="fas fa-right-from-bracket"></i> Logout
+                </a>
+                {% else %}
+                <a class="btn btn-outline btn-sm" href="{{ url_for('auth.login') }}">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </a>
+                {% endif %}
+
+            </div>
+        </div>
+
+        <!-- PAGE CONTENT -->
+        <div class="page-content">
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">
+                    <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}triangle-exclamation{% else %}info-circle{% endif %}"></i>
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <div class="container-card">
+                {% block content %}{% endblock %}
+            </div>
+
+        </div><!-- /page-content -->
+
+    </main>
+</div><!-- /app-shell -->
+
+<div id="__ai-toast"></div>
+
+<!-- Robotics Theme JS (theme toggle, counters, animations) -->
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+{% block extra_js %}{% endblock %}
+
+<!-- ── Notification Bell ────────────────────────────────── -->
+<script>
+(function () {
+    var bell     = document.getElementById('notifBell');
+    var dropdown = document.getElementById('notifDropdown');
+    var badge    = document.getElementById('notifBadge');
+    var list     = document.getElementById('ndList');
+    var markBtn  = document.getElementById('ndMarkRead');
+    if (!bell) return;
+
+    var LS_KEY = 'notif_last_seen';
+
+    function getLastSeen() {
+        try { return parseInt(localStorage.getItem(LS_KEY) || '0', 10); } catch(e) { return 0; }
+    }
+    function setLastSeen() {
+        try { localStorage.setItem(LS_KEY, Date.now()); } catch(e) {}
+    }
+
+    function relTime(iso) {
+        var diff = Date.now() - new Date(iso).getTime();
+        if (diff < 60000)          return 'just now';
+        if (diff < 3600000)        return Math.round(diff/60000) + 'm ago';
+        if (diff < 86400000)       return Math.round(diff/3600000) + 'h ago';
+        if (diff < 172800000)      return 'yesterday';
+        return Math.round(diff/86400000) + 'd ago';
+    }
+
+    function render(rows) {
+        var lastSeen = getLastSeen();
+        var unread = 0;
+
+        if (!rows || rows.length === 0) {
+            list.innerHTML = '<div class="nd-empty"><i class="fas fa-bell-slash"></i><div class="nd-empty-text">No recent emails</div></div>';
+            badge.classList.remove('visible');
+            return;
+        }
+
+        var html = '';
+        rows.forEach(function (r) {
+            var ts = new Date(r.created_at).getTime();
+            var isNew = ts > lastSeen;
+            if (isNew) unread++;
+            var letter = (r.sender_email || '?')[0].toUpperCase();
+            var isInv  = r.detected_intent === 'data_request';
+            html += '<div class="nd-item' + (isNew ? ' nd-unread' : '') + '">';
+            html += '<div class="nd-avatar' + (isInv ? ' inv' : '') + '">' + letter + '</div>';
+            html += '<div class="nd-body">';
+            html += '<div class="nd-subject">' + (r.subject_line || '(No Subject)') + '</div>';
+            html += '<div class="nd-from">' + (r.sender_email || '') + '</div>';
+            html += '<div class="nd-actions">';
+            html += '<a class="nd-btn nd-btn-open" href="/email-agent/inbox"><i class="fas fa-inbox"></i> Inbox</a>';
+            if (r.draft_id) {
+                html += '<a class="nd-btn nd-btn-draft" href="/email-agent/drafts/' + r.draft_id + '"><i class="fas fa-file-lines"></i> Draft</a>';
+            }
+            html += '</div></div>';
+            html += '<div class="nd-time">' + relTime(r.created_at) + '</div>';
+            html += '</div>';
+        });
+        list.innerHTML = html;
+
+        if (unread > 0) {
+            badge.textContent = unread > 9 ? '9+' : String(unread);
+            badge.classList.add('visible');
+        } else {
+            badge.classList.remove('visible');
+        }
+    }
+
+    function fetchNotifications() {
+        fetch('/email-agent/notifications/json')
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) { if (d) render(d.recent); })
+            .catch(function () {});
+    }
+
+    /* Toggle dropdown */
+    bell.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var isOpen = dropdown.classList.toggle('open');
+        if (isOpen) {
+            setLastSeen();
+            badge.classList.remove('visible');
+        }
+    });
+
+    /* Mark all read */
+    if (markBtn) {
+        markBtn.addEventListener('click', function () {
+            setLastSeen();
+            badge.classList.remove('visible');
+            document.querySelectorAll('.nd-item.nd-unread').forEach(function (el) {
+                el.classList.remove('nd-unread');
+            });
+        });
+    }
+
+    /* Close when clicking outside */
+    document.addEventListener('click', function (e) {
+        if (!bell.closest('.notif-wrap').contains(e.target)) {
+            dropdown.classList.remove('open');
+        }
+    });
+
+    /* Initial fetch + poll every 60s */
+    fetchNotifications();
+    setInterval(fetchNotifications, 60000);
+}());
+</script>
+</body>
+</html>

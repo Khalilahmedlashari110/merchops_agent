@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+
+{% block title %}Email Agent Monitor | MerchOps AI{% endblock %}
+
+{% block page_title %}Email Agent Monitor{% endblock %}
+
+{% block page_subtitle %}Track all incoming emails, AI detection, and auto reply status.{% endblock %}
+
+{% block extra_css %}
+<style>
+    .monitor-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: var(--r-lg);
+        overflow: hidden;
+        transition: border-color .15s, box-shadow .15s;
+        animation: fadeInUp .3s ease forwards;
+    }
+    .monitor-card:hover { border-color: rgba(127,119,221,.35); box-shadow: 0 0 20px rgba(127,119,221,.07); }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 22px;
+        border-bottom: 1px solid var(--card-border);
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .card-header h3 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text);
+    }
+    .card-header h3 i { color: var(--accent); font-size: 16px; }
+
+    .log-count {
+        background: rgba(127,119,221,.10);
+        border: 1px solid rgba(127,119,221,.20);
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 11px;
+        color: var(--text-2);
+        font-weight: 600;
+    }
+
+    .table-container { overflow-x: auto; }
+
+    .monitor-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .monitor-table th {
+        padding: 10px 12px;
+        background: rgba(127,119,221,.04);
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        border-bottom: 1px solid var(--card-border);
+    }
+    .monitor-table td {
+        padding: 12px 12px;
+        border-bottom: 1px solid rgba(42,42,74,.5);
+        vertical-align: middle;
+        color: var(--text-2);
+    }
+    .monitor-table tr:nth-child(even) td { background: rgba(26,26,53,.45); }
+    .monitor-table tr:hover td { background: rgba(127,119,221,.04); }
+    .monitor-table tr:last-child td { border-bottom: none; }
+
+    .pill-inventory { background: rgba(29,158,117,.10); color: #2ec990; border: 1px solid rgba(29,158,117,.22); }
+    .pill-draft     { background: rgba(127,119,221,.10); color: #a09df5; border: 1px solid rgba(127,119,221,.22); }
+    .pill-sent      { background: rgba(29,158,117,.10);  color: #2ec990; border: 1px solid rgba(29,158,117,.22); }
+    .pill-not-sent  { background: rgba(212,149,58,.10);  color: #f0b358; border: 1px solid rgba(212,149,58,.22); }
+    .pill-auto-replied { background: rgba(29,158,117,.10); color: #2ec990; border: 1px solid rgba(29,158,117,.22); }
+    .pill-draft-only   { background: rgba(212,149,58,.10); color: #f0b358; border: 1px solid rgba(212,149,58,.22); }
+    .pill-pending      { background: rgba(55,138,221,.10);  color: #7ab3f0; border: 1px solid rgba(55,138,221,.22); }
+
+    .sku-count   { font-family: var(--font-mono); font-weight: 600; color: var(--blue); }
+    .subject-cell {
+        font-weight: 500;
+        color: var(--text);
+        max-width: 240px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .refresh-btn {
+        background: rgba(127,119,221,.07);
+        border: 1px solid rgba(127,119,221,.22);
+        border-radius: 999px;
+        padding: 7px 18px;
+        font-size: 12px;
+        color: var(--text-2);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all .15s ease;
+        font-family: var(--font);
+    }
+    .refresh-btn:hover {
+        background: rgba(127,119,221,.14);
+        border-color: rgba(127,119,221,.42);
+        color: var(--accent);
+        box-shadow: 0 0 10px rgba(127,119,221,.14);
+        transform: translateY(-1px);
+    }
+
+    .analysis-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .analysis-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 14px;
+    }
+    .analysis-card strong {
+        display: block;
+        color: var(--text);
+        font-size: 24px;
+        line-height: 1;
+    }
+    .analysis-card span {
+        display: block;
+        margin-top: 7px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+    .followup-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        margin-bottom: 16px;
+        overflow: hidden;
+    }
+    .followup-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(300px, .75fr);
+        gap: 16px;
+        padding: 16px;
+    }
+    .followup-list,
+    .recommend-list {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+    }
+    .followup-item,
+    .recommend-item {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: start;
+        padding: 11px;
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        background: rgba(148, 163, 184, .035);
+    }
+    .recommend-item {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+    .followup-item i,
+    .recommend-item i {
+        color: var(--amber);
+        margin-top: 2px;
+    }
+    .followup-subject {
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 700;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .followup-meta,
+    .recommend-copy {
+        margin-top: 3px;
+        color: var(--text-2);
+        font-size: 11px;
+        line-height: 1.5;
+    }
+    .followup-link {
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    @media (max-width: 768px) {
+        .card-header { padding: 14px 16px; }
+        .monitor-table th, .monitor-table td { padding: 9px 8px; font-size: 11px; }
+        .subject-cell { max-width: 140px; }
+        .analysis-grid,
+        .followup-body { grid-template-columns: 1fr; }
+        .followup-item { grid-template-columns: auto minmax(0, 1fr); }
+        .followup-link { grid-column: 2; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2>Email Agent Monitoring</h2>
+        <p>Live tracking of email processing, detection, and replies.</p>
+    </div>
+    <div>
+        <button class="refresh-btn" onclick="location.reload();">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+</div>
+
+<div class="analysis-grid">
+    <div class="analysis-card">
+        <strong>{{ analysis.summary.total_received }}</strong>
+        <span>Received</span>
+    </div>
+    <div class="analysis-card">
+        <strong>{{ analysis.summary.responses_prepared }}</strong>
+        <span>Prepared</span>
+    </div>
+    <div class="analysis-card">
+        <strong>{{ analysis.summary.responses_sent }}</strong>
+        <span>Answered</span>
+    </div>
+    <div class="analysis-card">
+        <strong>{{ analysis.summary.drafts_waiting }}</strong>
+        <span>Drafts waiting</span>
+    </div>
+    <div class="analysis-card">
+        <strong>{{ analysis.summary.overdue }}</strong>
+        <span>Reminders</span>
+    </div>
+</div>
+
+<div class="followup-card">
+    <div class="card-header">
+        <h3>
+            <i class="fas fa-bell"></i>
+            Response Recommendations & Reminders
+        </h3>
+        <div class="log-count">{{ analysis.summary.response_rate }}% answered</div>
+    </div>
+    <div class="followup-body">
+        <div>
+            <div class="followup-list">
+                {% if analysis.pending %}
+                    {% for item in analysis.pending %}
+                    <div class="followup-item">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <div class="followup-subject" title="{{ item.subject_line }}">{{ item.subject_line or '(No subject)' }}</div>
+                            <div class="followup-meta">
+                                {{ item.sender_email }} - {{ item.age_hours or 0 }}h old - {{ item.recommendation }}
+                            </div>
+                        </div>
+                        {% if item.draft_id %}
+                            <a class="followup-link" href="{{ url_for('email_agent.draft_detail', draft_id=item.draft_id) }}">Open draft</a>
+                        {% else %}
+                            <span class="followup-link">Needs review</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="followup-item">
+                        <i class="fas fa-circle-check"></i>
+                        <div>
+                            <div class="followup-subject">No unanswered reminders</div>
+                            <div class="followup-meta">All received emails are answered or within the reminder window.</div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="recommend-list">
+            {% for recommendation in analysis.recommendations %}
+            <div class="recommend-item">
+                <i class="fas fa-lightbulb"></i>
+                <div class="recommend-copy">{{ recommendation }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="monitor-card">
+    <div class="card-header">
+        <h3>
+            <i class="fas fa-history"></i>
+            Email Activity Log
+        </h3>
+        {% if logs %}
+        <div class="log-count">
+            <i class="fas fa-database"></i> {{ logs|length }} records
+        </div>
+        {% endif %}
+    </div>
+
+    {% if logs %}
+    <div class="table-container">
+        <table class="monitor-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Organization</th>
+                    <th>Sender</th>
+                    <th>Subject</th>
+                    <th>Intent</th>
+                    <th>SKUs</th>
+                    <th>Draft</th>
+                    <th>Sent</th>
+                    <th>Status</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td class="sku-count">#{{ log.id }}</td>
+                    <td>{{ log.organization_name or '-' }}</td>
+                    <td>{{ log.sender_email }}</td>
+                    <td class="subject-cell" title="{{ log.subject_line }}">{{ log.subject_line|truncate(40) }}</td>
+                    <td>
+                        {% if log.detected_intent == "inventory" %}
+                            <span class="pill pill-inventory">
+                                <i class="fas fa-boxes"></i> Inventory
+                            </span>
+                        {% elif log.detected_intent == "general" %}
+                            <span class="pill">
+                                <i class="fas fa-comment"></i> General
+                            </span>
+                        {% else %}
+                            <span class="pill">{{ log.detected_intent or '-' }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="sku-count">{{ log.matched_skus or 0 }}</td>
+                    <td>
+                        {% if log.auto_reply_generated %}
+                            <span class="pill pill-draft">
+                                <i class="fas fa-file-alt"></i> Yes
+                            </span>
+                        {% else %}
+                            <span class="pill">
+                                <i class="fas fa-times"></i> No
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.auto_reply_sent %}
+                            <span class="pill pill-sent">
+                                <i class="fas fa-check-circle"></i> Sent
+                            </span>
+                        {% else %}
+                            <span class="pill pill-not-sent">
+                                <i class="fas fa-clock"></i> No
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.status == "Auto Replied" %}
+                            <span class="pill pill-auto-replied">
+                                <i class="fas fa-reply-all"></i> Auto Replied
+                            </span>
+                        {% elif log.status == "Draft Only" %}
+                            <span class="pill pill-draft-only">
+                                <i class="fas fa-file-alt"></i> Draft Only
+                            </span>
+                        {% elif log.status == "Pending" %}
+                            <span class="pill pill-pending">
+                                <i class="fas fa-hourglass-half"></i> Pending
+                            </span>
+                        {% else %}
+                            <span class="pill">{{ log.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="ts" style="white-space: nowrap;">{{ log.created_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <h3>No email activity yet</h3>
+        <p>Once emails are processed, logs will appear here.</p>
+        <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: center;">
+            <span class="pill pill-inventory">
+                <i class="fas fa-boxes"></i> Inventory Intent
+            </span>
+            <span class="pill pill-draft">
+                <i class="fas fa-file-alt"></i> Draft Generated
+            </span>
+            <span class="pill pill-sent">
+                <i class="fas fa-check-circle"></i> Reply Sent
+            </span>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh every 30 seconds (optional)
+    // Uncomment to enable auto-refresh
+    /*
+    setTimeout(function() {
+        location.reload();
+    }, 30000);
+    */
+    
+    // Add tooltip functionality for truncated text
+    document.addEventListener('DOMContentLoaded', function() {
+        const subjectCells = document.querySelectorAll('.subject-cell');
+        subjectCells.forEach(cell => {
+            if (cell.scrollWidth > cell.clientWidth) {
+                cell.style.cursor = 'help';
+            }
+        });
+    });
+</script>
+{% endblock %}

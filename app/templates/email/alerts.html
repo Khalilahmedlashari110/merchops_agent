@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Email Alerts{% endblock %}
+{% block page_title %}Email Alerts{% endblock %}
+{% block page_subtitle %}Send daily or weekly email alerts for top risky high-sales SKUs.{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2>Auto Email Alerts</h2>
+        <p>Send inventory alert emails from the latest saved uploaded inventory data.</p>
+    </div>
+</div>
+
+<div class="card">
+    <h3 class="section-title">Send Inventory Alert</h3>
+
+    <form method="post">
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Recipient Email</label>
+                <input class="form-control" type="email" name="recipient_email" required>
+            </div>
+
+            <div class="form-group">
+                <label>Alert Type</label>
+                <select class="form-control" name="alert_type">
+                    <option value="Daily">Daily</option>
+                    <option value="Weekly">Weekly</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-top:16px;">
+            <button class="btn" type="submit">Send Alert Email</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,95 +1,343 @@
 {% extends "base.html" %}
 
-{% block title %}Email Detail{% endblock %}
-{% block page_title %}Email Detail{% endblock %}
-{% block page_subtitle %}Review incoming email, matched inventory, and generated draft.{% endblock %}
+{% block title %}Email Detail | MerchOps AI{% endblock %}
+{% block page_title %}AI Email Review{% endblock %}
+{% block page_subtitle %}Review the original message, AI intent extraction, matched inventory, and draft handoff.{% endblock %}
+
+{% block extra_css %}
+<style>
+.mail-review {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.review-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: center;
+    padding: 18px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background:
+        linear-gradient(135deg, rgba(45,212,191,.10), rgba(125,211,252,.045) 55%, rgba(251,191,36,.04)),
+        var(--card-bg);
+    box-shadow: var(--shadow-sm);
+}
+.review-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--green);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.review-kicker::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 99px;
+    background: var(--green);
+    box-shadow: 0 0 0 4px rgba(134,239,172,.12);
+}
+.review-title {
+    margin-top: 10px;
+    color: var(--text);
+    font-size: clamp(22px, 2.1vw, 32px);
+    font-weight: 900;
+    line-height: 1.15;
+}
+.review-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+.review-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 5px 9px;
+    border: 1px solid var(--card-border);
+    border-radius: 999px;
+    background: rgba(255,255,255,.04);
+    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 800;
+}
+.review-pill i { color: var(--accent); }
+.review-pill.success {
+    color: var(--green);
+    border-color: rgba(134,239,172,.24);
+    background: rgba(134,239,172,.08);
+}
+.review-pill.warning {
+    color: var(--amber);
+    border-color: rgba(251,191,36,.24);
+    background: rgba(251,191,36,.08);
+}
+.review-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+.review-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
+    gap: 16px;
+}
+.review-card {
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+.review-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--card-border);
+    background: rgba(255,255,255,.025);
+}
+.review-card-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 900;
+}
+.review-card-title i { color: var(--accent); }
+.review-card-body { padding: 16px; }
+.mail-body {
+    white-space: pre-wrap;
+    color: var(--text-2);
+    font-size: 13px;
+    line-height: 1.75;
+}
+.sender-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    margin-bottom: 14px;
+    padding: 12px;
+    border: 1px solid rgba(139,152,174,.16);
+    border-radius: 8px;
+    background: rgba(255,255,255,.035);
+}
+.sender-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #061115;
+    background: var(--grad);
+    font-weight: 900;
+}
+.sender-line {
+    color: var(--text);
+    font-weight: 850;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.sender-sub {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ai-status-card {
+    border: 1px solid rgba(45,212,191,.20);
+    border-radius: 8px;
+    padding: 14px;
+    background: rgba(45,212,191,.07);
+}
+.ai-status-card.warning {
+    border-color: rgba(251,191,36,.22);
+    background: rgba(251,191,36,.07);
+}
+.ai-status-card h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 8px;
+    color: var(--text);
+    font-size: 13px;
+}
+.ai-status-card p {
+    color: var(--text-2);
+    font-size: 12px;
+    line-height: 1.6;
+}
+.parsed-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+.parsed-item {
+    min-height: 78px;
+    padding: 11px;
+    border: 1px solid rgba(139,152,174,.16);
+    border-radius: 8px;
+    background: rgba(255,255,255,.035);
+}
+.parsed-item span {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.parsed-item strong {
+    display: block;
+    margin-top: 7px;
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.45;
+    word-break: break-word;
+}
+.inventory-table {
+    width: 100%;
+    min-width: 920px;
+}
+.risk-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 900;
+}
+.risk-danger { color: var(--danger); background: rgba(251,113,133,.09); }
+.risk-warning { color: var(--amber); background: rgba(251,191,36,.09); }
+.risk-ok { color: var(--green); background: rgba(134,239,172,.09); }
+@media (max-width: 980px) {
+    .review-hero,
+    .review-grid {
+        grid-template-columns: 1fr;
+    }
+    .review-actions {
+        justify-content: flex-start;
+    }
+    .parsed-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="grid grid-2">
-    <div class="card">
-        <h3 class="section-title">Incoming Email</h3>
-
-        <p><strong>From:</strong> {{ email_item.from }}</p>
-        <p><strong>To:</strong> {{ email_item.to }}</p>
-        <p><strong>Date:</strong> {{ email_item.date }}</p>
-        <p><strong>Subject:</strong> {{ email_item.subject }}</p>
-
-        <div style="margin:12px 0; display:flex; gap:8px; flex-wrap:wrap;">
-            {% if email_item.parsed.is_inventory_request %}
-                <span class="pill" style="background:#e8f6ee; color:#1d6b42;">Inventory</span>
-            {% else %}
-                <span class="pill">General</span>
-            {% endif %}
-
-            {% if email_item.auto_draft_enabled %}
-                <span class="pill" style="background:#e8f1fb; color:#245a8a;">Draft Created</span>
-            {% else %}
-                <span class="pill" style="background:#fff4e5; color:#a05a00;">Manual Review</span>
+<div class="mail-review">
+    <section class="review-hero">
+        <div>
+            <div class="review-kicker">AI review workspace</div>
+            <h2 class="review-title">{{ email_item.subject or '(No Subject)' }}</h2>
+            <div class="review-meta">
+                {% if email_item.parsed.is_inventory_request %}
+                    <span class="review-pill success"><i class="fas fa-boxes-stacked"></i> Inventory request</span>
+                {% else %}
+                    <span class="review-pill"><i class="fas fa-comment-dots"></i> General message</span>
+                {% endif %}
+                {% if email_item.auto_draft_enabled %}
+                    <span class="review-pill success"><i class="fas fa-file-lines"></i> Draft prepared</span>
+                {% else %}
+                    <span class="review-pill warning"><i class="fas fa-user-pen"></i> Manual review</span>
+                {% endif %}
+                <span class="review-pill"><i class="fas fa-clock"></i> {{ email_item.date or 'No date' }}</span>
+            </div>
+        </div>
+        <div class="review-actions">
+            <a class="btn btn-outline" href="{{ url_for('email_agent.inbox') }}"><i class="fas fa-arrow-left"></i> Inbox</a>
+            {% if email_item.draft_id %}
+            <a class="btn btn-primary" href="{{ url_for('email_agent.draft_detail', draft_id=email_item.draft_id) }}"><i class="fas fa-file-lines"></i> Open Draft</a>
             {% endif %}
         </div>
+    </section>
 
-        <hr style="margin:16px 0;">
-        <div style="white-space:pre-wrap; line-height:1.7;">{{ email_item.body }}</div>
-    </div>
+    <section class="review-grid">
+        <article class="review-card">
+            <div class="review-card-head">
+                <div class="review-card-title"><i class="fas fa-envelope-open-text"></i> Incoming Message</div>
+            </div>
+            <div class="review-card-body">
+                <div class="sender-card">
+                    <div class="sender-avatar">{{ (email_item.from or '?')[0] | upper }}</div>
+                    <div>
+                        <div class="sender-line">{{ email_item.from }}</div>
+                        <div class="sender-sub">To {{ email_item.to or '-' }}</div>
+                    </div>
+                </div>
+                <div class="mail-body">{{ email_item.body }}</div>
+            </div>
+        </article>
 
-    <div class="card">
-        <h3 class="section-title">Reply Draft Status</h3>
+        <aside class="review-card">
+            <div class="review-card-head">
+                <div class="review-card-title"><i class="fas fa-wand-magic-sparkles"></i> Agent Decision</div>
+            </div>
+            <div class="review-card-body">
+                {% if email_item.auto_draft_enabled %}
+                <div class="ai-status-card">
+                    <h4><i class="fas fa-circle-check"></i> Reply path ready</h4>
+                    <p>The agent created a reply draft. Review tone, stock quantities, and sender context before sending.</p>
+                    {% if email_item.draft_id %}
+                    <div style="margin-top:12px;">
+                        <a class="btn btn-primary" href="{{ url_for('email_agent.draft_detail', draft_id=email_item.draft_id) }}">
+                            <i class="fas fa-arrow-right"></i> Review Draft
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="ai-status-card warning">
+                    <h4><i class="fas fa-triangle-exclamation"></i> Needs human decision</h4>
+                    <p>No automatic draft was created. Review the intent and decide whether this should become an approved sender workflow.</p>
+                </div>
+                {% endif %}
+            </div>
+        </aside>
+    </section>
 
-        {% if email_item.auto_draft_enabled %}
-            <p class="muted">
-                A formatted draft has been created for this inventory-related email.
-                It has not been sent automatically.
-            </p>
+    <section class="review-card">
+        <div class="review-card-head">
+            <div class="review-card-title"><i class="fas fa-brain"></i> Parsed Request</div>
+        </div>
+        <div class="review-card-body">
+            <div class="parsed-grid">
+                <div class="parsed-item"><span>Intent</span><strong>{{ email_item.parsed.action_intent or '-' }}</strong></div>
+                <div class="parsed-item"><span>Styles</span><strong>{{ email_item.parsed.styles|join(', ') or '-' }}</strong></div>
+                <div class="parsed-item"><span>Colours</span><strong>{{ email_item.parsed.colours|join(', ') or '-' }}</strong></div>
+                <div class="parsed-item"><span>Sizes</span><strong>{{ email_item.parsed.sizes|join(', ') or '-' }}</strong></div>
+                <div class="parsed-item"><span>SKUs</span><strong>{{ email_item.parsed.skus|join(', ') or '-' }}</strong></div>
+                <div class="parsed-item"><span>Key Terms</span><strong>{{ email_item.parsed.key_terms|join(', ') or '-' }}</strong></div>
+            </div>
+        </div>
+    </section>
 
-            {% if email_item.draft_id %}
-                <a class="btn" href="{{ url_for('email_agent.draft_detail', draft_id=email_item.draft_id) }}">
-                    Open Draft for Review
-                </a>
+    <section class="review-card">
+        <div class="review-card-head">
+            <div class="review-card-title"><i class="fas fa-table-list"></i> Matched Inventory Rows</div>
+            {% if email_item.matched_rows %}
+                <span class="review-pill"><i class="fas fa-database"></i> {{ email_item.matched_rows|length }} rows</span>
             {% endif %}
-        {% else %}
-            <p class="muted">
-                No automatic draft was created because this email was not classified as inventory-related.
-            </p>
-        {% endif %}
-    </div>
-</div>
-
-<div class="card" style="margin-top:18px;">
-    <h3 class="section-title">Parsed Request</h3>
-    <div class="table-wrap">
-        <table>
-            <tbody>
-                <tr>
-                    <th>Intent</th>
-                    <td>{{ email_item.parsed.action_intent }}</td>
-                </tr>
-                <tr>
-                    <th>Styles</th>
-                    <td>{{ email_item.parsed.styles|join(', ') }}</td>
-                </tr>
-                <tr>
-                    <th>Colours</th>
-                    <td>{{ email_item.parsed.colours|join(', ') }}</td>
-                </tr>
-                <tr>
-                    <th>Sizes</th>
-                    <td>{{ email_item.parsed.sizes|join(', ') }}</td>
-                </tr>
-                <tr>
-                    <th>SKUs</th>
-                    <td>{{ email_item.parsed.skus|join(', ') }}</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<div class="card" style="margin-top:18px;">
-    <h3 class="section-title">Matched Inventory Rows</h3>
-
-    {% if email_item.matched_rows %}
+        </div>
+        {% if email_item.matched_rows %}
         <div class="table-wrap">
-            <table>
+            <table class="inventory-table">
                 <thead>
                     <tr>
                         <th>SKU</th>
@@ -99,8 +347,8 @@
                         <th>Size</th>
                         <th>Available</th>
                         <th>Coverage %</th>
-                        <th>Coverage Incl InTransit %</th>
-                        <th>Req New Order</th>
+                        <th>Incl Transit %</th>
+                        <th>Req Order</th>
                         <th>Risk</th>
                     </tr>
                 </thead>
@@ -116,14 +364,27 @@
                         <td>{{ row.CoveragePct }}</td>
                         <td>{{ row.CoveragePctInclInTransit }}</td>
                         <td>{{ row.ReqNewOrderQty }}</td>
-                        <td>{{ row.RiskStatus }}</td>
+                        <td>
+                            {% if row.RiskStatus in ['Critical', 'Out of Stock'] %}
+                                <span class="risk-tag risk-danger"><i class="fas fa-circle-exclamation"></i>{{ row.RiskStatus }}</span>
+                            {% elif row.RiskStatus in ['High Risk', 'New Order Required'] %}
+                                <span class="risk-tag risk-warning"><i class="fas fa-triangle-exclamation"></i>{{ row.RiskStatus }}</span>
+                            {% else %}
+                                <span class="risk-tag risk-ok"><i class="fas fa-check"></i>{{ row.RiskStatus }}</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    {% else %}
-        <p class="muted">No matching inventory rows found for this email.</p>
-    {% endif %}
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <h3>No inventory matches</h3>
+            <p>The agent did not find matching rows for the detected request terms.</p>
+        </div>
+        {% endif %}
+    </section>
 </div>
 {% endblock %}

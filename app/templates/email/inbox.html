@@ -289,6 +289,233 @@
 .ib-empty-compact { padding: 32px 24px; }
 .ib-empty-warning .ib-empty-ring { background:rgba(251,191,36,.07); border-color:rgba(251,191,36,.14); color:var(--a1); }
 
+/* Smart mailbox refresh */
+.mailbox-smart-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+.mailbox-hero,
+.mailbox-assist {
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background:
+        linear-gradient(135deg, rgba(45,212,191,.10), rgba(125,211,252,.045) 54%, rgba(251,191,36,.04)),
+        var(--card-bg);
+    box-shadow: var(--shadow-sm);
+}
+.mailbox-hero {
+    min-height: 176px;
+    padding: 18px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: center;
+}
+.mailbox-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--green);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.mailbox-kicker::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 99px;
+    background: var(--green);
+    box-shadow: 0 0 0 4px rgba(134,239,172,.12);
+}
+.mailbox-title {
+    margin-top: 10px;
+    color: var(--text);
+    font-size: clamp(24px, 2.2vw, 34px);
+    font-weight: 900;
+    line-height: 1.1;
+}
+.mailbox-copy {
+    max-width: 740px;
+    margin-top: 8px;
+    color: var(--text-2);
+    font-size: 12.5px;
+    line-height: 1.65;
+}
+.mailbox-orbit {
+    width: 132px;
+    height: 132px;
+    border: 1px solid rgba(139,152,174,.18);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background:
+        linear-gradient(135deg, rgba(45,212,191,.12), rgba(125,211,252,.06)),
+        rgba(255,255,255,.035);
+}
+.mailbox-orbit::before,
+.mailbox-orbit::after {
+    content: "";
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    height: 1px;
+    background: rgba(125,211,252,.22);
+}
+.mailbox-orbit::before { top: 42px; }
+.mailbox-orbit::after { bottom: 42px; background: rgba(251,191,36,.18); }
+.mailbox-orbit i {
+    position: relative;
+    z-index: 1;
+    width: 46px;
+    height: 46px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--grad);
+    color: #061115;
+    font-size: 18px;
+}
+.mailbox-orbit span {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 12px;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-align: center;
+    text-transform: uppercase;
+}
+.mailbox-assist {
+    padding: 14px;
+}
+.assist-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.assist-head i { color: var(--accent); }
+.assist-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+.assist-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 9px;
+    padding: 10px;
+    border: 1px solid rgba(139,152,174,.16);
+    border-radius: 8px;
+    background: rgba(255,255,255,.035);
+}
+.assist-item i {
+    margin-top: 2px;
+    color: var(--amber);
+}
+.assist-item strong {
+    display: block;
+    color: var(--text);
+    font-size: 12px;
+}
+.assist-item span {
+    display: block;
+    margin-top: 2px;
+    color: var(--text-2);
+    font-size: 11px;
+    line-height: 1.45;
+}
+.ib-smart-lane {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.smart-chip {
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    padding: 11px;
+}
+.smart-chip b {
+    display: block;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 18px;
+}
+.smart-chip span {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.ib-card-wrap.priority-high::before { opacity: 1; background: var(--danger); }
+.ib-card-wrap.priority-medium::before { background: var(--amber); }
+.ib-card-wrap.priority-low::before { background: var(--accent); }
+.ib-card-wrap.priority-high {
+    background: linear-gradient(90deg, rgba(251,113,133,.055), transparent 45%);
+}
+.ib-smart-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(139,152,174,.10);
+}
+.priority-pill,
+.suggest-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 24px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+.priority-high .priority-pill {
+    color: var(--danger);
+    border: 1px solid rgba(251,113,133,.24);
+    background: rgba(251,113,133,.09);
+}
+.priority-medium .priority-pill {
+    color: var(--amber);
+    border: 1px solid rgba(251,191,36,.24);
+    background: rgba(251,191,36,.09);
+}
+.priority-low .priority-pill {
+    color: var(--accent);
+    border: 1px solid rgba(45,212,191,.24);
+    background: rgba(45,212,191,.09);
+}
+.suggest-pill {
+    color: var(--text-2);
+    border: 1px solid rgba(139,152,174,.16);
+    background: rgba(255,255,255,.035);
+}
+.suggest-pill i { color: var(--accent); }
+.ib-card-wrap.is-hidden-by-smart { display: none; }
+
 /* ── Responsive ───────────────────────────────────── */
 @media (max-width: 640px) {
     .ib-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -305,6 +532,10 @@
     .ib-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .ib-toolbar { align-items: stretch; }
     .ib-toolbar-right { width: 100%; justify-content: flex-start; }
+    .mailbox-smart-grid { grid-template-columns: 1fr; }
+    .mailbox-hero { grid-template-columns: 1fr; }
+    .mailbox-orbit { display: none; }
+    .ib-smart-lane { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>
 {% endblock %}
@@ -321,6 +552,62 @@
 {% set gen_count   = reg_total - inv_count %}
 {% set reg_manual_count = registered_emails | rejectattr('auto_draft_enabled') | list | length %}
 {% set manual_count = reg_manual_count + unreg_total %}
+{% set urgent_count = unreg_total + reg_manual_count %}
+{% set inventory_terms = namespace(v=0) %}
+{% for e in registered_emails %}
+    {% if e.parsed.key_terms %}
+        {% set inventory_terms.v = inventory_terms.v + (e.parsed.key_terms | length) %}
+    {% endif %}
+{% endfor %}
+
+<section class="mailbox-smart-grid">
+    <div class="mailbox-hero">
+        <div>
+            <div class="mailbox-kicker">AI mailbox triage</div>
+            <div class="mailbox-title">Prioritized conversations, suggested next action.</div>
+            <div class="mailbox-copy">
+                The mailbox now separates inventory requests, draft-ready replies, manual-review senders, and unregistered contacts so your team can clear the queue faster.
+            </div>
+        </div>
+        <div class="mailbox-orbit" aria-hidden="true">
+            <i class="fas fa-envelope-open-text"></i>
+            <span>Signal queue</span>
+        </div>
+    </div>
+    <aside class="mailbox-assist">
+        <div class="assist-head"><i class="fas fa-wand-magic-sparkles"></i> Agent guidance</div>
+        <div class="assist-list">
+            <div class="assist-item">
+                <i class="fas fa-triangle-exclamation"></i>
+                <div>
+                    <strong>{{ urgent_count }} need review</strong>
+                    <span>Manual and unregistered messages are treated as the first pass.</span>
+                </div>
+            </div>
+            <div class="assist-item">
+                <i class="fas fa-file-lines"></i>
+                <div>
+                    <strong>{{ dft_count }} drafts ready</strong>
+                    <span>Open prepared replies and send after checking tone and stock rows.</span>
+                </div>
+            </div>
+            <div class="assist-item">
+                <i class="fas fa-tags"></i>
+                <div>
+                    <strong>{{ inventory_terms.v }} extracted terms</strong>
+                    <span>Detected SKU, style, colour, and size clues are shown on each message.</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+</section>
+
+<div class="ib-smart-lane">
+    <div class="smart-chip"><b>{{ urgent_count }}</b><span>Priority review</span></div>
+    <div class="smart-chip"><b>{{ inv_count }}</b><span>Inventory intents</span></div>
+    <div class="smart-chip"><b>{{ dft_count }}</b><span>Ready replies</span></div>
+    <div class="smart-chip"><b>{{ inventory_terms.v }}</b><span>Detected terms</span></div>
+</div>
 
 <!-- ══ STATS STRIP ════════════════════════════════ -->
 <div class="ib-stats">
@@ -358,6 +645,7 @@
 <div class="ib-toolbar">
     <div class="ib-tabs">
         <button type="button" class="ib-tab active" data-filter="all">All <span class="ib-tab-count">{{ total }}</span></button>
+        <button type="button" class="ib-tab" data-filter="urgent">Priority <span class="ib-tab-count">{{ urgent_count }}</span></button>
         <button type="button" class="ib-tab" data-filter="inv">Inventory <span class="ib-tab-count">{{ inv_count }}</span></button>
         <button type="button" class="ib-tab" data-filter="gen">General <span class="ib-tab-count">{{ gen_count }}</span></button>
         <button type="button" class="ib-tab" data-filter="man">Manual Review <span class="ib-tab-count">{{ manual_count }}</span></button>
@@ -391,9 +679,11 @@
         {% for e in registered_emails %}
         {% set is_inv = e.parsed.is_inventory_request %}
         {% set is_man = not e.auto_draft_enabled %}
-        <div class="ib-card-wrap {% if is_inv %}type-inv{% elif is_man %}type-man{% else %}type-gen{% endif %}"
+        {% set priority = 'medium' if is_man else ('high' if is_inv and e.draft_id else 'low') %}
+        <div class="ib-card-wrap {% if is_inv %}type-inv{% elif is_man %}type-man{% else %}type-gen{% endif %} priority-{{ priority }}"
              data-type="{% if is_inv %}inv{% elif is_man %}man{% else %}gen{% endif %}"
              data-draft="{{ '1' if e.draft_id else '0' }}"
+             data-priority="{{ priority }}"
              data-search="{{ (e.subject ~ ' ' ~ e.from_name ~ ' ' ~ e.from_email ~ ' ' ~ e.body ~ ' ' ~ (e.parsed.key_terms | join(' '))) | lower | e }}">
             <div class="ib-card">
                 <div class="ib-avatar {% if is_inv %}av-inv{% elif is_man %}av-man{% else %}av-gen{% endif %}">
@@ -432,6 +722,28 @@
                         {% if e.parsed.key_terms | length > 4 %}
                         <span class="sku-chip">+{{ e.parsed.key_terms | length - 4 }}</span>
                         {% endif %}
+                    </div>
+                    <div class="ib-smart-row">
+                        <span class="priority-pill">
+                            {% if priority == 'high' %}
+                                <i class="fas fa-bolt"></i> High priority
+                            {% elif priority == 'medium' %}
+                                <i class="fas fa-clock"></i> Review needed
+                            {% else %}
+                                <i class="fas fa-circle-check"></i> Low priority
+                            {% endif %}
+                        </span>
+                        <span class="suggest-pill">
+                            {% if e.draft_id %}
+                                <i class="fas fa-wand-magic-sparkles"></i> Review prepared draft
+                            {% elif is_man %}
+                                <i class="fas fa-user-pen"></i> Classify manually
+                            {% elif is_inv %}
+                                <i class="fas fa-boxes-stacked"></i> Check matched stock
+                            {% else %}
+                                <i class="fas fa-comment-dots"></i> Read context
+                            {% endif %}
+                        </span>
                     </div>
                 </div>
                 <div class="ib-right">
@@ -483,9 +795,10 @@
     {% if unregistered_emails %}
     <div class="ib-list" id="ibUnregList">
         {% for e in unregistered_emails %}
-        <div class="ib-card-wrap type-man"
+        <div class="ib-card-wrap type-man priority-high"
              data-type="man"
              data-draft="0"
+             data-priority="high"
              data-search="{{ (e.subject ~ ' ' ~ e.from_name ~ ' ' ~ e.from_email ~ ' ' ~ e.body) | lower | e }}">
             <div class="ib-card">
                 <div class="ib-avatar av-man">
@@ -509,6 +822,10 @@
                         {% if e.parsed.is_inventory_request %}
                         <span class="eml-pill ep-inv"><i class="fas fa-boxes-stacked"></i> Inventory</span>
                         {% endif %}
+                    </div>
+                    <div class="ib-smart-row">
+                        <span class="priority-pill"><i class="fas fa-bolt"></i> High priority</span>
+                        <span class="suggest-pill"><i class="fas fa-user-check"></i> Approve or ignore sender</span>
                     </div>
                 </div>
                 <div class="ib-right">
@@ -578,6 +895,7 @@
         var type = card.getAttribute('data-type');
         var draft = card.getAttribute('data-draft') === '1';
         return activeFilter === 'all'
+            || (activeFilter === 'urgent' && (card.getAttribute('data-priority') === 'high' || card.getAttribute('data-type') === 'man'))
             || (activeFilter === 'inv' && type === 'inv')
             || (activeFilter === 'gen' && type === 'gen')
             || (activeFilter === 'man' && type === 'man')

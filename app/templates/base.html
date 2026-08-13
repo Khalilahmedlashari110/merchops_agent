@@ -32,6 +32,7 @@
 </head>
 
 <body>
+<div class="agent-atmosphere" aria-hidden="true"></div>
 <div class="page-loading-overlay" id="pageLoadingOverlay" aria-live="polite" aria-hidden="true">
     <div class="page-loading-card">
         <div class="page-loading-mark" aria-hidden="true">
@@ -55,10 +56,10 @@
     <aside class="sidebar">
 
         <div class="brand">
-            <div class="brand-logo">M</div>
+            <div class="brand-logo"><i class="fas fa-wand-magic-sparkles"></i></div>
             <div>
                 <div class="brand-name">MerchOps<br>Agent</div>
-                <div class="brand-sub">AI · Vision · Ops</div>
+                <div class="brand-sub">Autonomous Ops</div>
             </div>
         </div>
 
@@ -149,6 +150,19 @@
                 </a>
                 {% endif %}
                 </div>
+            </div>
+        </div>
+
+        <div class="sidebar-intel" aria-label="Agent system status">
+            <div class="sidebar-intel-head">
+                <span class="status-pulse-dot"></span>
+                <span>Agent Fabric</span>
+            </div>
+            <div class="sidebar-intel-grid">
+                <span><strong>SQL</strong> Ready</span>
+                <span><strong>Mail</strong> Watch</span>
+                <span><strong>Stock</strong> Risk</span>
+                <span><strong>Roles</strong> Live</span>
             </div>
         </div>
 
@@ -281,7 +295,7 @@
                 <!-- Live agent status pulse -->
                 <div class="agent-status-pill" title="Email AI agent is active and polling">
                     <span class="status-pulse-dot"></span>
-                    <span>Agent Online</span>
+                    <span>Autonomous Agent</span>
                 </div>
 
                 <!-- ── Notification bell (authenticated only) ─── -->
@@ -330,6 +344,21 @@
 
             </div>
         </div>
+
+        <section class="agent-command-bar" aria-label="Agent command center">
+            <div class="agent-command-main">
+                <span class="agent-command-icon"><i class="fas fa-wand-magic-sparkles"></i></span>
+                <div>
+                    <strong>Command Center</strong>
+                    <span>Email, inventory, chatbot, and access signals are unified in this workspace.</span>
+                </div>
+            </div>
+            <div class="agent-command-actions">
+                <a href="{{ url_for('email_agent.monitor') }}"><i class="fas fa-envelope-circle-check"></i>Email AI</a>
+                <a href="{{ url_for('inventory.index') }}"><i class="fas fa-boxes-stacked"></i>Inventory</a>
+                <a href="{{ url_for('data_chatbot.index') }}"><i class="fas fa-comments"></i>Data Agent</a>
+            </div>
+        </section>
 
         <!-- PAGE CONTENT -->
         <div class="page-content">

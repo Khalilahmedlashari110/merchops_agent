@@ -37,8 +37,6 @@ def create_app():
     from app.email_agent.routes import email_agent_bp
     from app.data_chatbot.routes import data_chatbot_bp
     from app.inventory.routes import inventory_bp
-    from app.ralawise.routes import ralawise_bp
-    from app.a4.routes import a4_bp
     from app.email_agent.scheduler import start_email_scheduler
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
@@ -48,8 +46,6 @@ def create_app():
     app.register_blueprint(email_agent_bp)
     app.register_blueprint(data_chatbot_bp)
     app.register_blueprint(inventory_bp)
-    app.register_blueprint(ralawise_bp)
-    app.register_blueprint(a4_bp)
 
     start_email_scheduler()
    

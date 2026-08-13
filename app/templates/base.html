@@ -78,14 +78,6 @@
                    href="{{ url_for('inventory.index') }}">
                     <i class="fas fa-boxes-stacked"></i> Inventory
                 </a>
-                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('ralawise.') %}active{% endif %}"
-                   href="{{ url_for('ralawise.index') }}">
-                    <i class="fas fa-shirt"></i> Ralawise Scraper
-                </a>
-                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('a4.') %}active{% endif %}"
-                   href="{{ url_for('a4.index') }}">
-                    <i class="fas fa-tags"></i> A4 Scraper
-                </a>
                 {% if current_user.is_authenticated and current_user.role_name == "super_admin" %}
                 <a class="nav-link {% if request.endpoint == 'organization.list_organizations' %}active{% endif %}"
                    href="{{ url_for('organization.list_organizations') }}">
